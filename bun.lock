@@ -7,6 +7,8 @@
       "dependencies": {
         "@nuxt/eslint": "1.13.0",
         "@nuxt/ui": "4.4.0",
+        "@vueuse/core": "^14.2.0",
+        "@vueuse/nuxt": "^14.2.0",
         "drizzle-orm": "^0.45.1",
         "eslint": "^9.0.0",
         "nuxt": "^4.3.0",
@@ -782,6 +784,8 @@
     "@vueuse/integrations": ["@vueuse/integrations@14.2.0", "", { "dependencies": { "@vueuse/core": "14.2.0", "@vueuse/shared": "14.2.0" }, "peerDependencies": { "async-validator": "^4", "axios": "^1", "change-case": "^5", "drauu": "^0.4", "focus-trap": "^7 || ^8", "fuse.js": "^7", "idb-keyval": "^6", "jwt-decode": "^4", "nprogress": "^0.2", "qrcode": "^1.5", "sortablejs": "^1", "universal-cookie": "^7 || ^8", "vue": "^3.5.0" }, "optionalPeers": ["async-validator", "axios", "change-case", "drauu", "focus-trap", "fuse.js", "idb-keyval", "jwt-decode", "nprogress", "qrcode", "sortablejs", "universal-cookie"] }, "sha512-Yuo5XbIi6XkfSXOYKd5SBZwyBEyO3Hd41eeG2555hDbE0Maz/P0BfPJDYhgDXjS9xI0jkWUUp1Zh5lXHOgkwLw=="],
 
     "@vueuse/metadata": ["@vueuse/metadata@14.2.0", "", {}, "sha512-i3axTGjU8b13FtyR4Keeama+43iD+BwX9C2TmzBVKqjSHArF03hjkp2SBZ1m72Jk2UtrX0aYCugBq2R1fhkuAQ=="],
+
+    "@vueuse/nuxt": ["@vueuse/nuxt@14.2.0", "", { "dependencies": { "@nuxt/kit": "^4.3.0", "@vueuse/core": "14.2.0", "@vueuse/metadata": "14.2.0", "local-pkg": "^1.1.2" }, "peerDependencies": { "nuxt": "^3.0.0 || ^4.0.0-0", "vue": "^3.5.0" } }, "sha512-MpxTYd7/W0izL6DgMEYUUTYkm1q0aqE0kfMr6oBcj5R0TIrdPJAJIwVaqs5pbSjQUPjNNgQ7mCRvx9RKFUq+VQ=="],
 
     "@vueuse/shared": ["@vueuse/shared@14.2.0", "", { "peerDependencies": { "vue": "^3.5.0" } }, "sha512-Z0bmluZTlAXgUcJ4uAFaML16JcD8V0QG00Db3quR642I99JXIDRa2MI2LGxiLVhcBjVnL1jOzIvT5TT2lqJlkA=="],
 
