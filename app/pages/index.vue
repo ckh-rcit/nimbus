@@ -1,32 +1,75 @@
 <script setup lang="ts">
+import { ZONE_DATASET_CONFIGS, ACCOUNT_DATASET_CONFIGS } from '~~/shared/types'
+
 definePageMeta({
   layout: 'default'
 })
 
-// Fetch stats
-const { data: stats } = await useFetch('/api/stats')
+// Get selected zone from layout state
+const selectedZone = useState<string | null>('selectedZone')
+
+// Build query params for stats
+const statsQuery = computed(() => {
+  const params: Record<string, string> = {}
+  if (selectedZone.value) {
+    params.zoneId = selectedZone.value
+  }
+  return params
+})
+
+// Fetch stats with zone filter
+const { data: stats, refresh: refreshStats } = await useFetch('/api/stats', {
+  query: statsQuery,
+  watch: [statsQuery]
+})
 const { data: zonesData } = await useFetch('/api/zones')
+
+// Get selected zone name for display
+const selectedZoneName = computed(() => {
+  if (!selectedZone.value) return 'All Zones'
+  const zone = zonesData.value?.zones?.find((z: any) => z.id === selectedZone.value)
+  return zone?.name || 'Unknown Zone'
+})
 
 const formatNumber = (n: number) => new Intl.NumberFormat().format(n)
 
-// Dataset cards with counts
-const datasetCards = computed(() => {
+// Zone dataset cards with counts
+const zoneDatasetCards = computed(() => {
   const counts = stats.value?.datasetCounts || {}
-  return [
-    { label: 'HTTP Requests', dataset: 'http_requests', icon: 'i-heroicons-globe-alt', count: counts['http_requests'] || 0 },
-    { label: 'Firewall Events', dataset: 'firewall_events', icon: 'i-heroicons-shield-check', count: counts['firewall_events'] || 0 },
-    { label: 'DNS Logs', dataset: 'dns_logs', icon: 'i-heroicons-server', count: counts['dns_logs'] || 0 },
-    { label: 'Audit Logs', dataset: 'audit_logs', icon: 'i-heroicons-clipboard-document-list', count: counts['audit_logs'] || 0 }
-  ]
+  return ZONE_DATASET_CONFIGS.map(ds => ({
+    label: ds.label,
+    dataset: ds.id,
+    icon: ds.icon,
+    count: counts[ds.id] || 0
+  }))
 })
+
+// Account dataset cards with counts
+const accountDatasetCards = computed(() => {
+  const counts = stats.value?.datasetCounts || {}
+  return ACCOUNT_DATASET_CONFIGS.map(ds => ({
+    label: ds.label,
+    dataset: ds.id,
+    icon: ds.icon,
+    count: counts[ds.id] || 0
+  }))
+})
+
+// Filter to only show datasets with logs
+const activeZoneDatasets = computed(() => zoneDatasetCards.value.filter(d => d.count > 0))
+const activeAccountDatasets = computed(() => accountDatasetCards.value.filter(d => d.count > 0))
 </script>
 
 <template>
   <div class="dashboard">
     <!-- Header -->
     <div class="dashboard-header">
-      <h1 class="dashboard-title">Dashboard</h1>
-      <p class="dashboard-subtitle">Cloudflare Logpush monitoring and analytics</p>
+      <div>
+        <h1 class="dashboard-title">Dashboard</h1>
+        <p class="dashboard-subtitle">
+          {{ selectedZone ? `Showing logs for ${selectedZoneName}` : 'Cloudflare Logpush monitoring and analytics' }}
+        </p>
+      </div>
     </div>
 
     <!-- Stats Cards -->
@@ -72,15 +115,41 @@ const datasetCards = computed(() => {
       </div>
     </div>
 
-    <!-- Dataset Overview -->
-    <div class="section">
-      <h2 class="section-title">Datasets</h2>
+    <!-- Zone Datasets -->
+    <div class="section" v-if="activeZoneDatasets.length > 0 || !selectedZone">
+      <h2 class="section-title">Zone Datasets</h2>
       <div class="dataset-grid">
         <NuxtLink
-          v-for="card in datasetCards"
+          v-for="card in zoneDatasetCards"
           :key="card.dataset"
           :to="`/logs/${card.dataset}`"
           class="dataset-card"
+          :class="{ 'dataset-card-empty': card.count === 0 }"
+        >
+          <div class="dataset-card-left">
+            <div class="dataset-icon">
+              <UIcon :name="card.icon" class="w-5 h-5" />
+            </div>
+            <div class="dataset-info">
+              <p class="dataset-name">{{ card.label }}</p>
+              <p class="dataset-count">{{ formatNumber(card.count) }} logs</p>
+            </div>
+          </div>
+          <UIcon name="i-heroicons-chevron-right" class="w-5 h-5 dataset-arrow" />
+        </NuxtLink>
+      </div>
+    </div>
+
+    <!-- Account Datasets -->
+    <div class="section" v-if="activeAccountDatasets.length > 0 || !selectedZone">
+      <h2 class="section-title">Account Datasets</h2>
+      <div class="dataset-grid">
+        <NuxtLink
+          v-for="card in accountDatasetCards"
+          :key="card.dataset"
+          :to="`/logs/${card.dataset}`"
+          class="dataset-card"
+          :class="{ 'dataset-card-empty': card.count === 0 }"
         >
           <div class="dataset-card-left">
             <div class="dataset-icon">
@@ -106,8 +175,8 @@ const datasetCards = computed(() => {
         </div>
         <div class="action-card">
           <UIcon name="i-heroicons-link" class="w-8 h-8 action-icon" />
-          <code class="action-code">/api/ingest/{dataset}</code>
-          <p class="action-hint">Logpush HTTP destination endpoint</p>
+          <code class="action-code">/api/ingest?token=...</code>
+          <p class="action-hint">Logpush HTTP destination endpoint (auto-detects dataset)</p>
         </div>
       </div>
     </div>
@@ -251,6 +320,14 @@ const datasetCards = computed(() => {
 .dataset-card:hover {
   border-color: rgba(246, 130, 31, 0.5);
   background-color: #1a1a1a;
+}
+
+.dataset-card-empty {
+  opacity: 0.5;
+}
+
+.dataset-card-empty:hover {
+  opacity: 0.7;
 }
 
 .dataset-card-left {
