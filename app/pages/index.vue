@@ -164,22 +164,6 @@ const activeAccountDatasets = computed(() => accountDatasetCards.value.filter(d 
         </NuxtLink>
       </div>
     </div>
-
-    <!-- Quick Actions -->
-    <div class="section">
-      <h2 class="section-title">Quick Actions</h2>
-      <div class="actions-grid">
-        <div class="action-card">
-          <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 action-icon" />
-          <p class="action-text">Configure Logpush jobs in the Cloudflare dashboard to start receiving logs</p>
-        </div>
-        <div class="action-card">
-          <UIcon name="i-heroicons-link" class="w-8 h-8 action-icon" />
-          <code class="action-code">/api/ingest?token=...</code>
-          <p class="action-hint">Logpush HTTP destination endpoint (auto-detects dataset)</p>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -367,67 +351,5 @@ const activeAccountDatasets = computed(() => accountDatasetCards.value.filter(d 
 .dataset-arrow {
   color: #525252;
   flex-shrink: 0;
-}
-
-/* Actions Grid */
-.actions-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-@media (max-width: 768px) {
-  .actions-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.action-card {
-  background-color: #141414;
-  border: 1px solid #262626;
-  border-radius: 8px;
-  padding: 24px;
-  text-align: center;
-}
-
-.action-icon {
-  color: #525252;
-  margin: 0 auto 12px auto;
-}
-
-.action-text {
-  font-size: 13px;
-  color: #737373;
-  margin: 0;
-  line-height: 1.5;
-}
-
-.action-code {
-  display: block;
-  font-size: 13px;
-  color: #a3a3a3;
-  background-color: #262626;
-  padding: 8px 12px;
-  border-radius: 6px;
-  margin-bottom: 8px;
-  word-break: break-all;
-}
-
-.action-hint {
-  font-size: 12px;
-  color: #525252;
-  margin: 0;
-}
-
-.action-link {
-  font-size: 14px;
-  font-weight: 500;
-  color: #f6821f;
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.action-link:hover {
-  color: #ff9f4a;
 }
 </style>
