@@ -1,0 +1,53 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/* Force dark background on html and body */
+html,
+html.dark,
+body {
+  background-color: #0a0a0a !important;
+  color: #fafafa !important;
+}
+
+/* Custom theme - pure black/gray/white with Cloudflare orange */
+:root {
+  color-scheme: dark;
+  /* Override neutral colors to pure grays (no blue tint) */
+  --ui-color-neutral-50: 250 250 250;   /* #fafafa */
+  --ui-color-neutral-100: 245 245 245;  /* #f5f5f5 */
+  --ui-color-neutral-200: 229 229 229;  /* #e5e5e5 */
+  --ui-color-neutral-300: 212 212 212;  /* #d4d4d4 */
+  --ui-color-neutral-400: 163 163 163;  /* #a3a3a3 */
+  --ui-color-neutral-500: 115 115 115;  /* #737373 */
+  --ui-color-neutral-600: 82 82 82;     /* #525252 */
+  --ui-color-neutral-700: 64 64 64;     /* #404040 */
+  --ui-color-neutral-800: 38 38 38;     /* #262626 */
+  --ui-color-neutral-900: 23 23 23;     /* #171717 */
+  --ui-color-neutral-950: 10 10 10;     /* #0a0a0a */
+
+  /* Cloudflare orange as primary */
+  --ui-color-primary-50: 255 247 237;
+  --ui-color-primary-100: 255 237 213;
+  --ui-color-primary-200: 254 215 170;
+  --ui-color-primary-300: 253 186 116;
+  --ui-color-primary-400: 251 146 60;
+  --ui-color-primary-500: 246 130 31;   /* #f6821f - Cloudflare orange */
+  --ui-color-primary-600: 234 88 12;
+  --ui-color-primary-700: 194 65 12;
+  --ui-color-primary-800: 154 52 18;
+  --ui-color-primary-900: 124 45 18;
+  --ui-color-primary-950: 67 20 7;
+}
+
+/* Dark mode specific overrides */
+.dark,
+:root {
+  --ui-bg: 10 10 10;
+  --ui-bg-muted: 23 23 23;
+  --ui-bg-elevated: 38 38 38;
+  --ui-border: 38 38 38;
+  --ui-border-muted: 23 23 23;
+  --ui-text: 250 250 250;
+  --ui-text-muted: 163 163 163;
+  --ui-text-dimmed: 115 115 115;
+}

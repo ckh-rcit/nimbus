@@ -1,0 +1,33 @@
+{
+  "name": "nimbus",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@nuxt/eslint": "1.13.0",
+    "@nuxt/ui": "4.4.0",
+    "drizzle-orm": "^0.45.1",
+    "eslint": "^9.0.0",
+    "nuxt": "^4.3.0",
+    "postgres": "^3.4.8",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.6.3",
+    "vue": "^3.5.27",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@iconify-json/heroicons": "^1.2.3",
+    "@iconify-json/lucide": "^1.2.88",
+    "@types/node": "^25.2.0",
+    "drizzle-kit": "^0.31.8"
+  }
+}
