@@ -158,10 +158,17 @@ export default defineEventHandler(async (event) => {
   // Debug: log all query params to see what Cloudflare sends
   console.log(`[Ingest] Query params received:`, JSON.stringify(query))
 
-  // Extract auth token from query params
-  // Cloudflare sends as ?header_Authorization=Bearer%20TOKEN (URL encoded)
-  const authHeader = query['header_Authorization'] as string || ''
-  const token = authHeader.replace('Bearer ', '').trim()
+  // Extract auth token - support multiple formats:
+  // 1. Simple: ?token=YOUR_TOKEN
+  // 2. Cloudflare header style: ?header_Authorization=Bearer%20YOUR_TOKEN
+  let token = ''
+  
+  if (query['token']) {
+    token = (query['token'] as string).trim()
+  } else if (query['header_Authorization']) {
+    const authHeader = query['header_Authorization'] as string
+    token = authHeader.replace('Bearer ', '').trim()
+  }
   
   const config = useRuntimeConfig()
   
