@@ -105,12 +105,12 @@ const activeAccountDatasets = computed(() => accountDatasetCards.value.filter(d 
       </div>
 
       <div class="stat-card">
-        <div class="stat-icon">
-          <UIcon name="i-heroicons-signal" class="w-6 h-6" />
+        <div class="stat-icon stat-icon-orange">
+          <UIcon name="i-heroicons-calendar" class="w-6 h-6" />
         </div>
         <div class="stat-content">
-          <p class="stat-label">Status</p>
-          <p class="stat-value stat-value-orange">Healthy</p>
+          <p class="stat-label">Logs Today</p>
+          <p class="stat-value">{{ formatNumber(stats?.logsToday || 0) }}</p>
         </div>
       </div>
     </div>

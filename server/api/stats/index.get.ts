@@ -41,9 +41,20 @@ export default defineEventHandler(async (event) => {
     .where(zoneCondition)
     .groupBy(schema.logs.dataset)
 
+  // Get logs from today (filtered by zone if selected)
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  
+  const todayCondition = sql`${schema.logs.timestamp} >= ${todayStart.toISOString()}`
+  const logsTodayResult = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(schema.logs)
+    .where(zoneCondition ? and(zoneCondition, todayCondition) : todayCondition)
+
   return {
     totalLogs: totalResult[0]?.count || 0,
     totalZones: zoneCounts[0]?.count || 0,
+    logsToday: logsTodayResult[0]?.count || 0,
     datasetCounts: Object.fromEntries(
       datasetCounts.map(d => [d.dataset, d.count])
     ),
