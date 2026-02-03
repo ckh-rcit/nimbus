@@ -155,6 +155,9 @@ function detectDataset(data: Record<string, unknown>): Dataset | null {
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
 
+  // Debug: log all query params to see what Cloudflare sends
+  console.log(`[Ingest] Query params received:`, JSON.stringify(query))
+
   // Extract auth token from query params
   // Cloudflare sends as ?header_Authorization=Bearer%20TOKEN (URL encoded)
   const authHeader = query['header_Authorization'] as string || ''
