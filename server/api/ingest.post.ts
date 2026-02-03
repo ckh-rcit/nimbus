@@ -1,18 +1,54 @@
 import { gunzipSync } from 'node:zlib'
 import { getDatabase, schema } from '~~/server/database'
-import { ALL_DATASETS, getDatasetScope, type Dataset } from '~~/shared/types'
+import { getDatasetScope, type Dataset } from '~~/shared/types'
 
 /**
- * Unified Logpush Ingestion Endpoint
+ * Universal Logpush Ingestion Endpoint
  * 
  * Cloudflare Logpush HTTP destination URL format:
- * https://nimbus.rivcoit.com/api/ingest?dataset=http_requests&header_Authorization=Bearer%20YOUR_TOKEN
+ * https://nimbus.rivcoit.com/api/ingest?header_Authorization=Bearer%20YOUR_TOKEN
  * 
- * Query parameters:
- * - dataset (required): The Cloudflare dataset name (e.g., http_requests, firewall_events, audit_logs)
- * - header_Authorization: Auth token in format "Bearer YOUR_TOKEN" (URL encoded)
- * - Any additional parameters passed by Cloudflare (tags, etc.)
+ * The dataset is auto-detected from the log data fields.
+ * Authentication via header_Authorization query parameter.
  */
+
+// Dataset detection based on unique field combinations
+// Each dataset has signature fields that identify it
+const DATASET_SIGNATURES: Array<{ dataset: Dataset; requiredFields: string[]; optionalFields?: string[] }> = [
+  // Zone-scoped datasets
+  { dataset: 'http_requests', requiredFields: ['EdgeStartTimestamp', 'ClientRequestHost', 'EdgeResponseStatus'] },
+  { dataset: 'firewall_events', requiredFields: ['Action', 'ClientRequestHost', 'Source'], optionalFields: ['RuleID'] },
+  { dataset: 'dns_logs', requiredFields: ['QueryName', 'QueryType', 'ResponseCode'] },
+  { dataset: 'spectrum_events', requiredFields: ['Application', 'Event', 'OriginIP'] },
+  { dataset: 'nel_reports', requiredFields: ['Type', 'URL', 'Body'] },
+  { dataset: 'page_shield_events', requiredFields: ['ScriptURL', 'PageURL'] },
+  { dataset: 'zaraz_events', requiredFields: ['EventType', 'Tool'] },
+  
+  // Account-scoped datasets
+  { dataset: 'audit_logs', requiredFields: ['ActionType', 'ActorEmail', 'When'], optionalFields: ['ResourceType'] },
+  { dataset: 'audit_logs_v2', requiredFields: ['ActionType', 'ActorEmail', 'ActionResult', 'When'] },
+  { dataset: 'access_requests', requiredFields: ['Action', 'AppDomain', 'CreatedAt'] },
+  { dataset: 'gateway_dns', requiredFields: ['QueryName', 'QueryType', 'PolicyName'] },
+  { dataset: 'gateway_http', requiredFields: ['URL', 'Action', 'PolicyName', 'HTTPMethod'] },
+  { dataset: 'gateway_network', requiredFields: ['DestinationIP', 'Protocol', 'PolicyName'] },
+  { dataset: 'workers_trace_events', requiredFields: ['ScriptName', 'Event', 'EventTimestampMs'] },
+  { dataset: 'zero_trust_network_sessions', requiredFields: ['SessionStartTime', 'UserEmail', 'DeviceID'] },
+  { dataset: 'biso_user_actions', requiredFields: ['Action', 'URL', 'UserEmail', 'Timestamp'] },
+  { dataset: 'casb_findings', requiredFields: ['FindingType', 'IntegrationName', 'DetectedTimestamp'] },
+  { dataset: 'device_posture_results', requiredFields: ['RuleName', 'DeviceID', 'Result'] },
+  { dataset: 'dex_application_tests', requiredFields: ['ApplicationID', 'TestName'] },
+  { dataset: 'dex_device_state_events', requiredFields: ['DeviceID', 'StateType'] },
+  { dataset: 'dlp_forensic_copies', requiredFields: ['RuleID', 'Content'] },
+  { dataset: 'dns_firewall_logs', requiredFields: ['ClusterID', 'QueryName'] },
+  { dataset: 'email_security_alerts', requiredFields: ['AlertType', 'Sender', 'Recipient'] },
+  { dataset: 'ipsec_logs', requiredFields: ['TunnelID', 'TunnelName'] },
+  { dataset: 'magic_ids_detections', requiredFields: ['DetectionID', 'SignatureID'] },
+  { dataset: 'network_analytics_logs', requiredFields: ['DestinationIP', 'SourceIP', 'Protocol', 'AttackID'] },
+  { dataset: 'sinkhole_http_logs', requiredFields: ['R2Path', 'AccountID'] },
+  { dataset: 'ssh_logs', requiredFields: ['UserEmail', 'SessionID'] },
+  { dataset: 'warp_config_changes', requiredFields: ['ConfigType', 'OldValue', 'NewValue'] },
+  { dataset: 'warp_toggle_changes', requiredFields: ['ToggleType', 'OldState', 'NewState'] }
+]
 
 // Field mappings for extracting common fields from different datasets
 const TIMESTAMP_FIELDS: Record<string, string> = {
@@ -100,26 +136,24 @@ function extractField(data: Record<string, unknown>, fieldMap: Record<string, st
   return (data[field] as string) || null
 }
 
+/**
+ * Detect dataset from log entry fields
+ */
+function detectDataset(data: Record<string, unknown>): Dataset | null {
+  const dataFields = Object.keys(data)
+  
+  for (const sig of DATASET_SIGNATURES) {
+    const hasRequired = sig.requiredFields.every(f => dataFields.includes(f))
+    if (hasRequired) {
+      return sig.dataset
+    }
+  }
+  
+  return null
+}
+
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  
-  // Get dataset from query parameter
-  const dataset = query.dataset as Dataset
-  
-  if (!dataset) {
-    throw createError({
-      statusCode: 400,
-      message: 'Missing required query parameter: dataset. Example: ?dataset=http_requests'
-    })
-  }
-
-  // Validate dataset
-  if (!ALL_DATASETS.includes(dataset)) {
-    throw createError({
-      statusCode: 400,
-      message: `Invalid dataset: ${dataset}. Valid datasets: ${ALL_DATASETS.join(', ')}`
-    })
-  }
 
   // Extract auth token from query params
   // Cloudflare sends as ?header_Authorization=Bearer%20TOKEN (URL encoded)
@@ -174,12 +208,27 @@ export default defineEventHandler(async (event) => {
 
   const db = getDatabase()
   const logsToInsert: Array<typeof schema.logs.$inferInsert> = []
-  const scope = getDatasetScope(dataset)
   const accountId = config.cloudflareAccountId
+  
+  // Track detected dataset for response
+  let detectedDataset: Dataset | null = null
 
   for (const line of lines) {
     try {
       const data = JSON.parse(line) as Record<string, unknown>
+      
+      // Auto-detect dataset from the first valid entry
+      const dataset = detectDataset(data)
+      if (!dataset) {
+        console.warn(`[Ingest] Could not detect dataset for log entry, fields: ${Object.keys(data).slice(0, 10).join(', ')}...`)
+        continue
+      }
+      
+      if (!detectedDataset) {
+        detectedDataset = dataset
+      }
+      
+      const scope = getDatasetScope(dataset)
       
       // Extract common fields
       const timestampField = TIMESTAMP_FIELDS[dataset] || 'Timestamp'
@@ -214,7 +263,7 @@ export default defineEventHandler(async (event) => {
         await db.insert(schema.logs).values(batch)
       }
       
-      console.log(`[Ingest] Inserted ${logsToInsert.length} ${dataset} logs (scope: ${scope})`)
+      console.log(`[Ingest] Inserted ${logsToInsert.length} logs (detected: ${detectedDataset})`)
     } catch (dbError) {
       console.error(`[Ingest] Database error:`, dbError)
       throw createError({
@@ -228,7 +277,6 @@ export default defineEventHandler(async (event) => {
     success: true,
     message: `Processed ${logsToInsert.length} log entries`,
     count: logsToInsert.length,
-    dataset,
-    scope
+    dataset: detectedDataset
   }
 })
