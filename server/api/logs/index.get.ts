@@ -71,12 +71,25 @@ export default defineEventHandler(async (event) => {
     )
   }
 
-  // Execute query
+  // Execute query with zone name join
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
   const [logs, countResult] = await Promise.all([
-    db.select()
+    db.select({
+      id: schema.logs.id,
+      dataset: schema.logs.dataset,
+      scope: schema.logs.scope,
+      zoneId: schema.logs.zoneId,
+      zoneName: schema.zones.name,
+      accountId: schema.logs.accountId,
+      timestamp: schema.logs.timestamp,
+      rayId: schema.logs.rayId,
+      clientIp: schema.logs.clientIp,
+      data: schema.logs.data,
+      createdAt: schema.logs.createdAt
+    })
       .from(schema.logs)
+      .leftJoin(schema.zones, eq(schema.logs.zoneId, schema.zones.id))
       .where(whereClause)
       .orderBy(desc(schema.logs.timestamp))
       .limit(limit)

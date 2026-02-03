@@ -312,6 +312,7 @@ function getActionColor(action: string): string {
         <thead>
           <tr>
             <th>Time</th>
+            <th v-if="datasetConfig?.scope === 'zone' && !selectedZone">Zone</th>
             <th>Client IP</th>
             <th v-for="col in datasetSpecificColumns" :key="col.key">{{ col.label }}</th>
             <th></th>
@@ -319,18 +320,21 @@ function getActionColor(action: string): string {
         </thead>
         <tbody>
           <tr v-if="pending && logs.length === 0">
-            <td :colspan="datasetSpecificColumns.length + 3" class="text-center py-8 text-neutral-500">
+            <td :colspan="datasetSpecificColumns.length + (datasetConfig?.scope === 'zone' && !selectedZone ? 4 : 3)" class="text-center py-8 text-neutral-500">
               Loading...
             </td>
           </tr>
           <tr v-else-if="logs.length === 0">
-            <td :colspan="datasetSpecificColumns.length + 3" class="text-center py-8 text-neutral-500">
+            <td :colspan="datasetSpecificColumns.length + (datasetConfig?.scope === 'zone' && !selectedZone ? 4 : 3)" class="text-center py-8 text-neutral-500">
               No logs found
             </td>
           </tr>
           <template v-for="log in logs" :key="log.id">
             <tr class="log-row" @click="toggleRow(log.id)">
               <td class="font-mono text-sm text-neutral-400">{{ formatTime(log.timestamp) }}</td>
+              <td v-if="datasetConfig?.scope === 'zone' && !selectedZone" class="text-sm">
+                <span class="text-orange-400">{{ log.zoneName || '-' }}</span>
+              </td>
               <td class="font-mono text-sm">{{ log.clientIp || '-' }}</td>
               <td v-for="col in datasetSpecificColumns" :key="col.key">
                 <span v-if="col.key.startsWith('data.')">{{ getNestedValue(log, col.key) || '-' }}</span>
@@ -344,7 +348,7 @@ function getActionColor(action: string): string {
               </td>
             </tr>
             <tr v-if="expandedRows.has(log.id)" class="expanded-row">
-              <td :colspan="datasetSpecificColumns.length + 3">
+              <td :colspan="datasetSpecificColumns.length + (datasetConfig?.scope === 'zone' && !selectedZone ? 4 : 3)">
                 <div class="expanded-content">
                   <div class="flex items-center justify-between mb-2">
                     <span class="text-sm font-medium text-neutral-400">Full Log Data</span>
