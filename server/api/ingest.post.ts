@@ -24,9 +24,9 @@ const DATASET_SIGNATURES: Array<{ dataset: Dataset; requiredFields: string[]; op
   { dataset: 'page_shield_events', requiredFields: ['ScriptURL', 'PageURL'] },
   { dataset: 'zaraz_events', requiredFields: ['EventType', 'Tool'] },
   
-  // Account-scoped datasets
-  { dataset: 'audit_logs', requiredFields: ['ActionType', 'ActorEmail', 'When'], optionalFields: ['ResourceType'] },
-  { dataset: 'audit_logs_v2', requiredFields: ['ActionType', 'ActorEmail', 'ActionResult', 'When'] },
+  // Account-scoped datasets - updated to match actual Cloudflare field names
+  { dataset: 'audit_logs', requiredFields: ['ActionType', 'AuditLogID', 'AccountID'] },
+  { dataset: 'audit_logs_v2', requiredFields: ['ActionType', 'ActionResult', 'AuditLogID', 'ActionTimestamp'] },
   { dataset: 'access_requests', requiredFields: ['Action', 'AppDomain', 'CreatedAt'] },
   { dataset: 'gateway_dns', requiredFields: ['QueryName', 'QueryType', 'PolicyName'] },
   { dataset: 'gateway_http', requiredFields: ['URL', 'Action', 'PolicyName', 'HTTPMethod'] },
@@ -55,8 +55,8 @@ const TIMESTAMP_FIELDS: Record<string, string> = {
   http_requests: 'EdgeStartTimestamp',
   firewall_events: 'Datetime',
   dns_logs: 'Timestamp',
-  audit_logs: 'When',
-  audit_logs_v2: 'When',
+  audit_logs: 'ActionTimestamp',
+  audit_logs_v2: 'ActionTimestamp',
   gateway_dns: 'Datetime',
   gateway_http: 'Datetime',
   gateway_network: 'Datetime',
