@@ -199,6 +199,13 @@ export default defineEventHandler(async (event) => {
     bodyText = typeof rawBody === 'string' ? rawBody : rawBody.toString('utf-8')
   }
 
+  // Handle Cloudflare destination validation test
+  // Cloudflare sends {"content":"tests"} to validate the endpoint
+  if (bodyText.includes('"content"') && bodyText.includes('"tests"')) {
+    console.log('[Ingest] Received Cloudflare validation test request')
+    return { success: true, message: 'Validation successful' }
+  }
+
   // Parse NDJSON (newline-delimited JSON)
   const lines = bodyText.trim().split('\n').filter(line => line.trim())
   
