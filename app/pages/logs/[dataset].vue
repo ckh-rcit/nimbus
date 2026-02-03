@@ -42,9 +42,10 @@ const timeRangeMs = computed(() => {
     '6h': 6 * 60 * 60 * 1000,
     '24h': 24 * 60 * 60 * 1000,
     '7d': 7 * 24 * 60 * 60 * 1000,
-    '30d': 30 * 24 * 60 * 60 * 1000
+    '30d': 30 * 24 * 60 * 60 * 1000,
+    'all': 0 // 0 means no time filter
   }
-  return ranges[selectedTimeRange.value] || ranges['1h']
+  return ranges[selectedTimeRange.value] ?? ranges['7d']
 })
 
 // Build query params
@@ -52,9 +53,13 @@ const queryParams = computed(() => {
   const params: Record<string, any> = {
     dataset: dataset.value,
     limit: pageSize.value,
-    offset: (page.value - 1) * pageSize.value,
-    endTime: new Date().toISOString(),
-    startTime: new Date(Date.now() - timeRangeMs.value).toISOString()
+    offset: (page.value - 1) * pageSize.value
+  }
+  
+  // Only add time filters if not 'all'
+  if (timeRangeMs.value > 0) {
+    params.endTime = new Date().toISOString()
+    params.startTime = new Date(Date.now() - timeRangeMs.value).toISOString()
   }
   
   if (selectedZone.value) {
