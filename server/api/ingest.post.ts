@@ -3,11 +3,15 @@ import { getDatabase, schema } from '~~/server/database'
 import { ALL_DATASETS, getDatasetScope, type Dataset } from '~~/shared/types'
 
 /**
- * Legacy Logpush Ingestion Endpoint (path-based dataset)
+ * Unified Logpush Ingestion Endpoint
  * 
- * URL format: https://nimbus.rivcoit.com/api/ingest/{dataset}?header_Authorization=Bearer%20YOUR_TOKEN
+ * Cloudflare Logpush HTTP destination URL format:
+ * https://nimbus.rivcoit.com/api/ingest?dataset=http_requests&header_Authorization=Bearer%20YOUR_TOKEN
  * 
- * NOTE: Prefer using /api/ingest?dataset=xxx for new Logpush jobs
+ * Query parameters:
+ * - dataset (required): The Cloudflare dataset name (e.g., http_requests, firewall_events, audit_logs)
+ * - header_Authorization: Auth token in format "Bearer YOUR_TOKEN" (URL encoded)
+ * - Any additional parameters passed by Cloudflare (tags, etc.)
  */
 
 // Field mappings for extracting common fields from different datasets
@@ -97,8 +101,18 @@ function extractField(data: Record<string, unknown>, fieldMap: Record<string, st
 }
 
 export default defineEventHandler(async (event) => {
-  const dataset = getRouterParam(event, 'dataset') as Dataset
+  const query = getQuery(event)
   
+  // Get dataset from query parameter
+  const dataset = query.dataset as Dataset
+  
+  if (!dataset) {
+    throw createError({
+      statusCode: 400,
+      message: 'Missing required query parameter: dataset. Example: ?dataset=http_requests'
+    })
+  }
+
   // Validate dataset
   if (!ALL_DATASETS.includes(dataset)) {
     throw createError({
@@ -107,8 +121,8 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Extract auth token from query params (Cloudflare sends as ?header_Authorization=Bearer%20TOKEN)
-  const query = getQuery(event)
+  // Extract auth token from query params
+  // Cloudflare sends as ?header_Authorization=Bearer%20TOKEN (URL encoded)
   const authHeader = query['header_Authorization'] as string || ''
   const token = authHeader.replace('Bearer ', '').trim()
   

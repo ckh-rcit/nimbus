@@ -16,6 +16,7 @@ export const zones = pgTable('zones', {
 export const logs = pgTable('logs', {
   id: serial('id').primaryKey(),
   dataset: varchar('dataset', { length: 50 }).notNull(), // http_requests, dns_logs, etc.
+  scope: varchar('scope', { length: 10 }).notNull().default('zone'), // 'zone' or 'account'
   zoneId: text('zone_id'), // For zone-scoped datasets
   accountId: text('account_id'), // For account-scoped datasets  
   timestamp: timestamp('timestamp', { withTimezone: true }).notNull(), // Log event timestamp
@@ -25,13 +26,15 @@ export const logs = pgTable('logs', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 }, (table) => [
   index('logs_dataset_idx').on(table.dataset),
+  index('logs_scope_idx').on(table.scope),
   index('logs_zone_id_idx').on(table.zoneId),
   index('logs_account_id_idx').on(table.accountId),
   index('logs_timestamp_idx').on(table.timestamp),
   index('logs_ray_id_idx').on(table.rayId),
   index('logs_client_ip_idx').on(table.clientIp),
-  // Composite index for common queries
+  // Composite indexes for common queries
   index('logs_dataset_timestamp_idx').on(table.dataset, table.timestamp),
+  index('logs_scope_dataset_timestamp_idx').on(table.scope, table.dataset, table.timestamp),
   index('logs_dataset_zone_timestamp_idx').on(table.dataset, table.zoneId, table.timestamp)
 ])
 

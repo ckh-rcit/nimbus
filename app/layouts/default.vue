@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DATASET_CONFIGS } from '~~/shared/types'
+import { ZONE_DATASET_CONFIGS, ACCOUNT_DATASET_CONFIGS } from '~~/shared/types'
 
 // Fetch zones for selector
 const { data: zonesData, refresh: refreshZones } = await useFetch('/api/zones')
@@ -12,9 +12,9 @@ const selectedZoneOption = computed({
   set: (val) => { selectedZone.value = val || null }
 })
 
-// Group datasets by scope
-const zoneDatasets = DATASET_CONFIGS.filter(d => d.scope === 'zone')
-const accountDatasets = DATASET_CONFIGS.filter(d => d.scope === 'account')
+// Collapsible sections state
+const zoneLogsExpanded = ref(true)
+const accountLogsExpanded = ref(true)
 
 // Time range state
 const timeRanges = [
@@ -72,35 +72,53 @@ const isActive = (path: string) => route.path === path
           <span>Dashboard</span>
         </NuxtLink>
 
-        <!-- Zone Datasets -->
+        <!-- Zone Datasets Section -->
         <div class="nimbus-nav-section">
-          <p class="nimbus-nav-title">Zone Logs</p>
+          <button class="nimbus-nav-section-header" @click="zoneLogsExpanded = !zoneLogsExpanded">
+            <span class="nimbus-nav-title">Zone Logs</span>
+            <UIcon 
+              :name="zoneLogsExpanded ? 'i-heroicons-chevron-down' : 'i-heroicons-chevron-right'" 
+              class="w-4 h-4 text-neutral-500" 
+            />
+          </button>
         </div>
-        <NuxtLink
-          v-for="ds in zoneDatasets"
-          :key="ds.id"
-          :to="`/logs/${ds.id}`"
-          class="nimbus-nav-link"
-          :class="{ active: isActive(`/logs/${ds.id}`) }"
-        >
-          <UIcon :name="ds.icon" class="w-4 h-4" />
-          <span>{{ ds.label }}</span>
-        </NuxtLink>
+        <div v-show="zoneLogsExpanded" class="nimbus-nav-group">
+          <NuxtLink
+            v-for="ds in ZONE_DATASET_CONFIGS"
+            :key="ds.id"
+            :to="`/logs/${ds.id}`"
+            class="nimbus-nav-link"
+            :class="{ active: isActive(`/logs/${ds.id}`) }"
+            :title="ds.description"
+          >
+            <UIcon :name="ds.icon" class="w-4 h-4" />
+            <span>{{ ds.label }}</span>
+          </NuxtLink>
+        </div>
 
-        <!-- Account Datasets -->
+        <!-- Account Datasets Section -->
         <div class="nimbus-nav-section">
-          <p class="nimbus-nav-title">Account Logs</p>
+          <button class="nimbus-nav-section-header" @click="accountLogsExpanded = !accountLogsExpanded">
+            <span class="nimbus-nav-title">Account Logs</span>
+            <UIcon 
+              :name="accountLogsExpanded ? 'i-heroicons-chevron-down' : 'i-heroicons-chevron-right'" 
+              class="w-4 h-4 text-neutral-500" 
+            />
+          </button>
         </div>
-        <NuxtLink
-          v-for="ds in accountDatasets"
-          :key="ds.id"
-          :to="`/logs/${ds.id}`"
-          class="nimbus-nav-link"
-          :class="{ active: isActive(`/logs/${ds.id}`) }"
-        >
-          <UIcon :name="ds.icon" class="w-4 h-4" />
-          <span>{{ ds.label }}</span>
-        </NuxtLink>
+        <div v-show="accountLogsExpanded" class="nimbus-nav-group">
+          <NuxtLink
+            v-for="ds in ACCOUNT_DATASET_CONFIGS"
+            :key="ds.id"
+            :to="`/logs/${ds.id}`"
+            class="nimbus-nav-link"
+            :class="{ active: isActive(`/logs/${ds.id}`) }"
+            :title="ds.description"
+          >
+            <UIcon :name="ds.icon" class="w-4 h-4" />
+            <span>{{ ds.label }}</span>
+          </NuxtLink>
+        </div>
       </nav>
 
       <!-- Sync Button -->
@@ -224,17 +242,38 @@ const isActive = (path: string) => route.path === path
 }
 
 .nimbus-nav-section {
-  margin-top: 24px;
-  margin-bottom: 8px;
+  margin-top: 16px;
+  margin-bottom: 4px;
+}
+
+.nimbus-nav-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nimbus-nav-section-header:hover .nimbus-nav-title {
+  color: #a3a3a3;
 }
 
 .nimbus-nav-title {
-  padding: 0 12px;
   font-size: 11px;
   font-weight: 500;
   color: #737373;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  transition: color 0.15s ease;
+}
+
+.nimbus-nav-group {
+  display: flex;
+  flex-direction: column;
 }
 
 .nimbus-nav-link {
