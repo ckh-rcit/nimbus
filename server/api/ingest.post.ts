@@ -162,8 +162,20 @@ export default defineEventHandler(async (event) => {
   
   const config = useRuntimeConfig()
   
+  // Debug: log auth attempt (remove after debugging)
+  console.log(`[Ingest Auth] Received token: "${token}", Expected: "${config.ingestAuthToken ? '[SET]' : '[NOT SET]'}"`)
+  
   // Validate auth token
+  if (!config.ingestAuthToken) {
+    console.error('[Ingest] CRITICAL: ingestAuthToken is not configured!')
+    throw createError({
+      statusCode: 500,
+      message: 'Server misconfiguration: authentication token not set'
+    })
+  }
+  
   if (!token || token !== config.ingestAuthToken) {
+    console.warn(`[Ingest] Auth failed - token mismatch`)
     throw createError({
       statusCode: 401,
       message: 'Unauthorized: Invalid or missing authentication token'
