@@ -103,31 +103,25 @@ onUnmounted(() => {
   }
 })
 
-// Column configuration based on dataset
-const columns = computed(() => {
-  const baseColumns = [
-    { key: 'timestamp', label: 'Time' },
-    { key: 'clientIp', label: 'Client IP' }
-  ]
-  
-  const datasetColumns: Record<string, Array<{ key: string; label: string }>> = {
-    // Zone-scoped datasets
-    http_requests: [
-      { key: 'data.ClientRequestMethod', label: 'Method' },
-      { key: 'data.ClientRequestHost', label: 'Host' },
-      { key: 'data.ClientRequestPath', label: 'Path' },
-      { key: 'data.EdgeResponseStatus', label: 'Status' },
-      { key: 'data.CacheCacheStatus', label: 'Cache' }
-    ],
-    firewall_events: [
-      { key: 'data.Action', label: 'Action' },
-      { key: 'data.Source', label: 'Source' },
-      { key: 'data.ClientRequestHost', label: 'Host' },
-      { key: 'data.ClientRequestPath', label: 'Path' }
-    ],
-    dns_logs: [
-      { key: 'data.QueryName', label: 'Query' },
-      { key: 'data.QueryType', label: 'Type' },
+// Dataset-specific columns configuration
+const datasetColumnsConfig: Record<string, Array<{ key: string; label: string }>> = {
+  // Zone-scoped datasets
+  http_requests: [
+    { key: 'data.ClientRequestMethod', label: 'Method' },
+    { key: 'data.ClientRequestHost', label: 'Host' },
+    { key: 'data.ClientRequestPath', label: 'Path' },
+    { key: 'data.EdgeResponseStatus', label: 'Status' },
+    { key: 'data.CacheCacheStatus', label: 'Cache' }
+  ],
+  firewall_events: [
+    { key: 'data.Action', label: 'Action' },
+    { key: 'data.Source', label: 'Source' },
+    { key: 'data.ClientRequestHost', label: 'Host' },
+    { key: 'data.ClientRequestPath', label: 'Path' }
+  ],
+  dns_logs: [
+    { key: 'data.QueryName', label: 'Query' },
+    { key: 'data.QueryType', label: 'Type' },
       { key: 'data.ResponseCode', label: 'Response' },
       { key: 'data.ColoCode', label: 'Colo' }
     ],
@@ -220,9 +214,11 @@ const columns = computed(() => {
       { key: 'data.Protocol', label: 'Protocol' },
       { key: 'data.Action', label: 'Action' }
     ]
-  }
-  
-  return [...baseColumns, ...(datasetColumns[dataset.value] || []), { key: 'actions', label: '' }]
+}
+
+// Get dataset-specific columns
+const datasetSpecificColumns = computed(() => {
+  return datasetColumnsConfig[dataset.value] || []
 })
 
 // Row expansion
@@ -311,120 +307,159 @@ function getActionColor(action: string): string {
     </div>
 
     <!-- Table -->
-    <UCard class="bg-neutral-900 border-neutral-800 overflow-hidden">
-      <UTable
-        :data="logs"
-        :columns="columns"
-        :loading="pending"
-        :ui="{
-          thead: 'bg-neutral-800',
-          th: 'text-neutral-400 font-medium',
-          td: 'text-neutral-300',
-          tr: 'hover:bg-neutral-800/50 border-neutral-800'
-        }"
-      >
-        <template #timestamp-cell="{ row }">
-          <span class="text-sm font-mono text-neutral-400">
-            {{ formatTime(row.original.timestamp) }}
-          </span>
-        </template>
+    <div class="logs-table-container">
+      <table class="logs-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Client IP</th>
+            <th v-for="col in datasetSpecificColumns" :key="col.key">{{ col.label }}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="pending && logs.length === 0">
+            <td :colspan="datasetSpecificColumns.length + 3" class="text-center py-8 text-neutral-500">
+              Loading...
+            </td>
+          </tr>
+          <tr v-else-if="logs.length === 0">
+            <td :colspan="datasetSpecificColumns.length + 3" class="text-center py-8 text-neutral-500">
+              No logs found
+            </td>
+          </tr>
+          <template v-for="log in logs" :key="log.id">
+            <tr class="log-row" @click="toggleRow(log.id)">
+              <td class="font-mono text-sm text-neutral-400">{{ formatTime(log.timestamp) }}</td>
+              <td class="font-mono text-sm">{{ log.clientIp || '-' }}</td>
+              <td v-for="col in datasetSpecificColumns" :key="col.key">
+                <span v-if="col.key.startsWith('data.')">{{ getNestedValue(log, col.key) || '-' }}</span>
+                <span v-else>{{ log[col.key] || '-' }}</span>
+              </td>
+              <td>
+                <UIcon 
+                  :name="expandedRows.has(log.id) ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" 
+                  class="w-4 h-4 text-neutral-500"
+                />
+              </td>
+            </tr>
+            <tr v-if="expandedRows.has(log.id)" class="expanded-row">
+              <td :colspan="datasetSpecificColumns.length + 3">
+                <div class="expanded-content">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium text-neutral-400">Full Log Data</span>
+                    <span v-if="log.rayId" class="text-xs bg-neutral-800 px-2 py-1 rounded">
+                      Ray ID: {{ log.rayId }}
+                    </span>
+                  </div>
+                  <pre class="log-json">{{ JSON.stringify(log.data, null, 2) }}</pre>
+                </div>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
 
-        <template #clientIp-cell="{ row }">
-          <span class="font-mono text-sm">{{ row.original.clientIp || '-' }}</span>
-        </template>
-
-        <template #data.EdgeResponseStatus-cell="{ row }">
-          <UBadge 
-            v-if="row.original.data?.EdgeResponseStatus"
-            :color="getStatusColor(row.original.data.EdgeResponseStatus)"
-            variant="subtle"
-          >
-            {{ row.original.data.EdgeResponseStatus }}
-          </UBadge>
-          <span v-else class="text-neutral-500">-</span>
-        </template>
-
-        <template #data.Action-cell="{ row }">
-          <UBadge 
-            v-if="row.original.data?.Action"
-            :color="getActionColor(row.original.data.Action)"
-            variant="subtle"
-          >
-            {{ row.original.data.Action }}
-          </UBadge>
-          <span v-else class="text-neutral-500">-</span>
-        </template>
-
-        <template #data.ClientRequestMethod-cell="{ row }">
-          <UBadge color="neutral" variant="subtle">
-            {{ row.original.data?.ClientRequestMethod || '-' }}
-          </UBadge>
-        </template>
-
-        <template #data.CacheCacheStatus-cell="{ row }">
-          <UBadge 
-            v-if="row.original.data?.CacheCacheStatus"
-            :color="row.original.data.CacheCacheStatus === 'hit' ? 'success' : 'neutral'"
-            variant="subtle"
-          >
-            {{ row.original.data.CacheCacheStatus }}
-          </UBadge>
-          <span v-else class="text-neutral-500">-</span>
-        </template>
-
-        <template #actions-cell="{ row }">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            size="xs"
-            :icon="expandedRows.has(row.original.id) ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
-            @click="toggleRow(row.original.id)"
-          />
-        </template>
-      </UTable>
-
-      <!-- Expanded Row Details -->
-      <template v-for="log in logs" :key="`expanded-${log.id}`">
-        <div
-          v-if="expandedRows.has(log.id)"
-          class="bg-neutral-950 border-t border-neutral-800 p-4"
-        >
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-medium text-neutral-400">Full Log Data</span>
-            <UBadge v-if="log.rayId" color="neutral" variant="subtle">
-              Ray ID: {{ log.rayId }}
-            </UBadge>
-          </div>
-          <pre class="text-xs text-neutral-300 bg-neutral-900 p-4 rounded-lg overflow-auto max-h-96">{{ JSON.stringify(log.data, null, 2) }}</pre>
-        </div>
-      </template>
-
-      <!-- Pagination -->
-      <div class="flex items-center justify-between px-4 py-3 border-t border-neutral-800">
-        <div class="text-sm text-neutral-400">
-          Showing {{ ((page - 1) * pageSize) + 1 }} - {{ Math.min(page * pageSize, pagination.total) }} of {{ pagination.total.toLocaleString() }}
-        </div>
-        <div class="flex items-center gap-2">
-          <UButton
-            color="neutral"
-            variant="outline"
-            size="sm"
-            :disabled="page <= 1"
-            @click="page--"
-          >
-            Previous
-          </UButton>
-          <UButton
-            color="neutral"
-            variant="outline"
-            size="sm"
-            :disabled="!pagination.hasMore"
-            @click="page++"
-          >
-            Next
-          </UButton>
-        </div>
+    <!-- Pagination -->
+    <div class="pagination-bar">
+      <div class="text-sm text-neutral-400">
+        Showing {{ ((page - 1) * pageSize) + 1 }} - {{ Math.min(page * pageSize, pagination.total) }} of {{ pagination.total.toLocaleString() }}
       </div>
-    </UCard>
+      <div class="flex items-center gap-2">
+        <UButton
+          color="neutral"
+          variant="outline"
+          size="sm"
+          :disabled="page <= 1"
+          @click="page--"
+        >
+          Previous
+        </UButton>
+        <UButton
+          color="neutral"
+          variant="outline"
+          size="sm"
+          :disabled="!pagination.hasMore"
+          @click="page++"
+        >
+          Next
+        </UButton>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.logs-table-container {
+  background: #171717;
+  border: 1px solid #262626;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.logs-table thead {
+  background: #1a1a1a;
+}
+
+.logs-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #737373;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #262626;
+}
+
+.logs-table td {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #d4d4d4;
+  border-bottom: 1px solid #262626;
+}
+
+.log-row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.log-row:hover {
+  background: #1f1f1f;
+}
+
+.expanded-row {
+  background: #0f0f0f;
+}
+
+.expanded-content {
+  padding: 16px;
+}
+
+.log-json {
+  font-size: 12px;
+  color: #a3a3a3;
+  background: #171717;
+  padding: 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  max-height: 400px;
+  margin: 0;
+}
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #171717;
+  border: 1px solid #262626;
+  border-radius: 8px;
+}
+</style>
