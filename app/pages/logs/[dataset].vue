@@ -118,7 +118,8 @@ const datasetColumnsConfig: Record<string, Array<{ key: string; label: string }>
     { key: 'data.Source', label: 'Source' },
     { key: 'data.RuleID', label: 'Rule ID' },
     { key: 'data.ClientRequestHost', label: 'Host' },
-    { key: 'data.EdgeResponseStatus', label: 'Status' }
+    { key: 'data.ClientRequestPath', label: 'Path' },
+    { key: 'data.EdgeColoCode', label: 'Colo' }
   ],
   dns_logs: [
     { key: 'data.QueryName', label: 'Query' },
@@ -266,6 +267,14 @@ function getActionColor(action: string): string {
   }
   return colors[action?.toLowerCase()] || 'neutral'
 }
+
+// Format cell value - handles falsy values like 0 and false
+function formatCellValue(value: any): string {
+  if (value === null || value === undefined) return '-'
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  if (value === '') return '-'
+  return String(value)
+}
 </script>
 
 <template>
@@ -339,8 +348,8 @@ function getActionColor(action: string): string {
               </td>
               <td class="font-mono text-sm">{{ log.clientIp || '-' }}</td>
               <td v-for="col in datasetSpecificColumns" :key="col.key">
-                <span v-if="col.key.startsWith('data.')">{{ getNestedValue(log, col.key) || '-' }}</span>
-                <span v-else>{{ log[col.key] || '-' }}</span>
+                <span v-if="col.key.startsWith('data.')">{{ formatCellValue(getNestedValue(log, col.key)) }}</span>
+                <span v-else>{{ formatCellValue(log[col.key]) }}</span>
               </td>
               <td>
                 <UIcon 

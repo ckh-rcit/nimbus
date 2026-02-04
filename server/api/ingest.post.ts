@@ -49,8 +49,25 @@ const DATASET_SIGNATURES: Array<{
   },
   { 
     dataset: 'firewall_events', 
-    uniqueFields: ['Action', 'Source', 'RuleID', 'Datetime', 'Kind', 'MatchIndex', 'OriginatorRayID'],
-    commonFields: ['ClientRequestHost', 'ClientIP', 'EdgeResponseStatus', 'RayID', 'Description'],
+    uniqueFields: [
+      // General
+      'Action', 'ContentScanObjResults', 'ContentScanObjSizes', 'ContentScanObjTypes',
+      'Description', 'Kind', 'LeakedCredentialCheckResult', 'MatchIndex', 'Metadata',
+      'OriginatorRayID', 'Ref', 'RuleID', 'Source',
+      // Edge
+      'EdgeColoCode', 'EdgeResponseStatus',
+      // OriginResponse
+      'OriginResponseStatus'
+    ],
+    commonFields: [
+      // General
+      'Datetime', 'RayID',
+      // Client
+      'ClientASN', 'ClientASNDescription', 'ClientCountry', 'ClientIP', 'ClientIPClass',
+      'ClientRefererHost', 'ClientRefererPath', 'ClientRefererQuery', 'ClientRefererScheme',
+      'ClientRequestHost', 'ClientRequestMethod', 'ClientRequestPath', 'ClientRequestProtocol',
+      'ClientRequestQuery', 'ClientRequestScheme', 'ClientRequestUserAgent'
+    ],
     minScore: 4
   },
   { 
@@ -514,6 +531,15 @@ export default defineEventHandler(async (event) => {
             if (host.startsWith('http')) {
               try { host = new URL(host).hostname } catch {}
             }
+            
+            // For DNS logs, strip the .cdn.cloudflare.net. suffix
+            // QueryName looks like: subdomain.example.com.cdn.cloudflare.net.
+            if (dataset === 'dns_logs' && host.includes('.cdn.cloudflare.net')) {
+              host = host.replace(/\.cdn\.cloudflare\.net\.?$/i, '')
+            }
+            
+            // Remove trailing dot if present
+            host = host.replace(/\.$/, '')
             
             // Try exact match first, then parent domains
             if (zoneMap.has(host)) {

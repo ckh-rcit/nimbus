@@ -75,6 +75,15 @@ async function backfillZoneIds() {
         } catch {}
       }
       
+      // For DNS logs, strip the .cdn.cloudflare.net. suffix
+      // QueryName looks like: subdomain.example.com.cdn.cloudflare.net.
+      if (log.dataset === 'dns_logs' && host.includes('.cdn.cloudflare.net')) {
+        host = host.replace(/\.cdn\.cloudflare\.net\.?$/i, '')
+      }
+      
+      // Remove trailing dot if present
+      host = host.replace(/\.$/, '')
+      
       // Try to find matching zone
       let zoneId: string | undefined
       
