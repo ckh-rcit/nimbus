@@ -116,15 +116,17 @@ const datasetColumnsConfig: Record<string, Array<{ key: string; label: string }>
   firewall_events: [
     { key: 'data.Action', label: 'Action' },
     { key: 'data.Source', label: 'Source' },
+    { key: 'data.RuleID', label: 'Rule ID' },
     { key: 'data.ClientRequestHost', label: 'Host' },
-    { key: 'data.ClientRequestPath', label: 'Path' }
+    { key: 'data.EdgeResponseStatus', label: 'Status' }
   ],
   dns_logs: [
     { key: 'data.QueryName', label: 'Query' },
     { key: 'data.QueryType', label: 'Type' },
-      { key: 'data.ResponseCode', label: 'Response' },
-      { key: 'data.ColoCode', label: 'Colo' }
-    ],
+    { key: 'data.ResponseCode', label: 'Response' },
+    { key: 'data.ResponseCached', label: 'Cached' },
+    { key: 'data.ColoCode', label: 'Colo' }
+  ],
     spectrum_events: [
       { key: 'data.Application', label: 'Application' },
       { key: 'data.Event', label: 'Event' },

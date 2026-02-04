@@ -17,16 +17,16 @@ import { getDatasetScope, type Dataset } from '~~/shared/types'
 const DATASET_SIGNATURES: Array<{ dataset: Dataset; requiredFields: string[]; optionalFields?: string[] }> = [
   // Zone-scoped datasets
   { dataset: 'http_requests', requiredFields: ['EdgeStartTimestamp', 'ClientRequestHost', 'EdgeResponseStatus'] },
-  { dataset: 'firewall_events', requiredFields: ['Action', 'ClientRequestHost', 'Source'], optionalFields: ['RuleID'] },
-  { dataset: 'dns_logs', requiredFields: ['QueryName', 'QueryType', 'ResponseCode'] },
+  { dataset: 'firewall_events', requiredFields: ['Action', 'ClientRequestHost', 'Source', 'Datetime'] },
+  { dataset: 'dns_logs', requiredFields: ['QueryName', 'QueryType', 'ResponseCode', 'ColoCode'] },
   { dataset: 'spectrum_events', requiredFields: ['Application', 'Event', 'OriginIP'] },
   { dataset: 'nel_reports', requiredFields: ['Type', 'URL', 'Body'] },
   { dataset: 'page_shield_events', requiredFields: ['ScriptURL', 'PageURL'] },
   { dataset: 'zaraz_events', requiredFields: ['EventType', 'Tool'] },
   
-  // Account-scoped datasets - updated to match actual Cloudflare field names
-  { dataset: 'audit_logs', requiredFields: ['ActionType', 'AuditLogID', 'AccountID'] },
-  { dataset: 'audit_logs_v2', requiredFields: ['ActionType', 'ActionResult', 'AuditLogID', 'ActionTimestamp'] },
+  // Account-scoped datasets
+  { dataset: 'audit_logs', requiredFields: ['ActionType', 'ID', 'When'] },
+  { dataset: 'audit_logs_v2', requiredFields: ['ActionTimestamp', 'AuditLogID', 'ActorEmail'] },
   { dataset: 'access_requests', requiredFields: ['Action', 'AppDomain', 'CreatedAt'] },
   { dataset: 'gateway_dns', requiredFields: ['QueryName', 'QueryType', 'PolicyName'] },
   { dataset: 'gateway_http', requiredFields: ['URL', 'Action', 'PolicyName', 'HTTPMethod'] },
@@ -55,7 +55,7 @@ const TIMESTAMP_FIELDS: Record<string, string> = {
   http_requests: 'EdgeStartTimestamp',
   firewall_events: 'Datetime',
   dns_logs: 'Timestamp',
-  audit_logs: 'ActionTimestamp',
+  audit_logs: 'When',
   audit_logs_v2: 'ActionTimestamp',
   gateway_dns: 'Datetime',
   gateway_http: 'Datetime',
@@ -86,8 +86,8 @@ const TIMESTAMP_FIELDS: Record<string, string> = {
 
 const RAY_ID_FIELDS: Record<string, string> = {
   http_requests: 'RayID',
-  firewall_events: 'RayID',
-  dns_logs: 'RayID'
+  firewall_events: 'RayID'
+  // Note: dns_logs does not have RayID per Cloudflare docs
 }
 
 const CLIENT_IP_FIELDS: Record<string, string> = {
@@ -96,7 +96,9 @@ const CLIENT_IP_FIELDS: Record<string, string> = {
   dns_logs: 'SourceIP',
   gateway_dns: 'SourceIP',
   gateway_http: 'SourceIP',
-  access_requests: 'IPAddress'
+  access_requests: 'IPAddress',
+  audit_logs: 'ActorIP',
+  audit_logs_v2: 'ActorIPAddress'
 }
 
 const ZONE_ID_FIELDS: Record<string, string> = {
