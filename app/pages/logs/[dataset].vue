@@ -398,14 +398,14 @@ function getColumnStyle(col: string) {
     <!-- Search & Filters Bar -->
     <div class="filters-bar">
       <div class="flex items-center gap-2 flex-1">
-        <USelectMenu
-          v-model="searchField"
-          :options="searchFieldOptions"
-          value-attribute="value"
-          option-attribute="label"
-          placeholder="Field"
-          class="w-36"
-        />
+        <div class="field-select-wrapper">
+          <select v-model="searchField" class="field-select">
+            <option v-for="opt in searchFieldOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+          <UIcon name="i-heroicons-chevron-down" class="field-select-icon" />
+        </div>
         <UInput
           v-model="searchQuery"
           placeholder="Search..."
@@ -570,11 +570,14 @@ function getColumnStyle(col: string) {
         <span class="text-sm text-neutral-400">
           Showing {{ logs.length > 0 ? ((page - 1) * pageSize) + 1 : 0 }} - {{ Math.min(page * pageSize, pagination.total) }} of {{ pagination.total.toLocaleString() }}
         </span>
-        <USelectMenu
-          v-model="pageSize"
-          :options="[25, 50, 100, 200]"
-          class="w-20"
-        />
+        <div class="page-size-wrapper">
+          <select v-model="pageSize" class="page-size-select">
+            <option :value="25">25</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+            <option :value="200">200</option>
+          </select>
+        </div>
         <span class="text-xs text-neutral-500">per page</span>
       </div>
       <div class="flex items-center gap-2">
@@ -616,21 +619,99 @@ function getColumnStyle(col: string) {
   margin-bottom: 16px;
 }
 
+/* Field Select Dropdown */
+.field-select-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.field-select {
+  appearance: none;
+  padding: 8px 32px 8px 12px;
+  font-size: 14px;
+  color: #d4d4d4;
+  background-color: #171717;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  cursor: pointer;
+  min-width: 120px;
+}
+
+.field-select:hover {
+  border-color: #404040;
+}
+
+.field-select:focus {
+  outline: none;
+  border-color: #f6821f;
+}
+
+.field-select option {
+  background-color: #171717;
+  color: #d4d4d4;
+}
+
+.field-select-icon {
+  position: absolute;
+  right: 10px;
+  width: 14px;
+  height: 14px;
+  color: #737373;
+  pointer-events: none;
+}
+
+/* Page Size Select */
+.page-size-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.page-size-select {
+  appearance: none;
+  padding: 6px 24px 6px 10px;
+  font-size: 13px;
+  color: #d4d4d4;
+  background-color: #171717;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23737373' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 14px;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  cursor: pointer;
+  min-width: 60px;
+}
+
+.page-size-select:hover {
+  border-color: #404040;
+}
+
+.page-size-select:focus {
+  outline: none;
+  border-color: #f6821f;
+}
+
+.page-size-select option {
+  background-color: #171717;
+  color: #d4d4d4;
+}
+
 .table-wrapper {
   flex: 1;
   min-height: 0;
   background: #171717;
   border: 1px solid #262626;
   border-radius: 8px;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .table-scroll-container {
   flex: 1;
   overflow: auto;
-  min-height: 0;
+  min-height: 300px;
 }
 
 .logs-table {
@@ -748,18 +829,25 @@ function getColumnStyle(col: string) {
 }
 
 /* Scrollbar styling */
+.table-scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: #404040 #171717;
+}
+
 .table-scroll-container::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 .table-scroll-container::-webkit-scrollbar-track {
-  background: #171717;
+  background: #1a1a1a;
+  border-radius: 5px;
 }
 
 .table-scroll-container::-webkit-scrollbar-thumb {
   background: #404040;
-  border-radius: 4px;
+  border-radius: 5px;
+  border: 2px solid #1a1a1a;
 }
 
 .table-scroll-container::-webkit-scrollbar-thumb:hover {
@@ -767,6 +855,6 @@ function getColumnStyle(col: string) {
 }
 
 .table-scroll-container::-webkit-scrollbar-corner {
-  background: #171717;
+  background: #1a1a1a;
 }
 </style>
