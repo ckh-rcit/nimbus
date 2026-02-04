@@ -27,20 +27,39 @@ const DATASET_SIGNATURES: Array<{
   // Zone-scoped datasets
   { 
     dataset: 'http_requests', 
-    uniqueFields: ['EdgeStartTimestamp', 'EdgeResponseStatus', 'EdgeColoCode', 'RayID'],
-    commonFields: ['ClientRequestHost', 'ClientRequestMethod', 'ClientIP', 'CacheCacheStatus'],
+    uniqueFields: [
+      // Performance/Edge fields unique to HTTP requests
+      'EdgeStartTimestamp', 'EdgeEndTimestamp', 'EdgeResponseStatus', 'EdgeColoCode', 'EdgeColoID',
+      'EdgeResponseBytes', 'EdgeResponseBodyBytes', 'EdgeTimeToFirstByteMs', 'EdgePathingSrc',
+      // Cache fields
+      'CacheCacheStatus', 'CacheReserveUsed', 'CacheResponseBytes', 'CacheTieredFill',
+      // Origin timing
+      'OriginResponseDurationMs', 'OriginTCPHandshakeDurationMs', 'OriginTLSHandshakeDurationMs',
+      // Worker fields
+      'WorkerCPUTime', 'WorkerWallTimeUs', 'WorkerStatus', 'WorkerScriptName',
+      // Bot fields
+      'BotScore', 'BotScoreSrc', 'BotTags', 'BotDetectionIDs'
+    ],
+    commonFields: [
+      'RayID', 'ClientIP', 'ClientRequestHost', 'ClientRequestMethod', 'ClientRequestPath',
+      'ClientRequestURI', 'ClientASN', 'ClientCountry', 'ZoneName', 'SecurityAction',
+      'WAFAttackScore', 'JA3Hash', 'JA4'
+    ],
     minScore: 4
   },
   { 
     dataset: 'firewall_events', 
-    uniqueFields: ['Action', 'Source', 'RuleID', 'Datetime', 'Kind'],
-    commonFields: ['ClientRequestHost', 'ClientIP', 'EdgeResponseStatus'],
+    uniqueFields: ['Action', 'Source', 'RuleID', 'Datetime', 'Kind', 'MatchIndex', 'OriginatorRayID'],
+    commonFields: ['ClientRequestHost', 'ClientIP', 'EdgeResponseStatus', 'RayID', 'Description'],
     minScore: 4
   },
   { 
     dataset: 'dns_logs', 
-    uniqueFields: ['QueryName', 'QueryType', 'ResponseCode', 'ColoCode'],
-    commonFields: ['SourceIP', 'Timestamp', 'ResponseCached'],
+    uniqueFields: [
+      'QueryName', 'QueryType', 'ResponseCode', 'ResponseCached',
+      'EDNSSubnet', 'EDNSSubnetLength', 'ColoCode'
+    ],
+    commonFields: ['SourceIP', 'Timestamp'],
     minScore: 4
   },
   { 
