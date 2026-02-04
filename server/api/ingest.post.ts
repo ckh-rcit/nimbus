@@ -13,41 +13,200 @@ import { getDatasetScope, type Dataset } from '~~/shared/types'
  */
 
 // Dataset detection based on unique field combinations
-// Each dataset has signature fields that identify it
-const DATASET_SIGNATURES: Array<{ dataset: Dataset; requiredFields: string[]; optionalFields?: string[] }> = [
+// Using a scoring system - dataset with highest match wins
+// Fields are weighted: unique fields score higher
+const DATASET_SIGNATURES: Array<{ 
+  dataset: Dataset
+  // Fields that strongly identify this dataset (2 points each)
+  uniqueFields: string[]
+  // Common fields that help confirm (1 point each)
+  commonFields: string[]
+  // Minimum score needed to match
+  minScore: number
+}> = [
   // Zone-scoped datasets
-  { dataset: 'http_requests', requiredFields: ['EdgeStartTimestamp', 'ClientRequestHost', 'EdgeResponseStatus'] },
-  { dataset: 'firewall_events', requiredFields: ['Action', 'ClientRequestHost', 'Source', 'Datetime'] },
-  { dataset: 'dns_logs', requiredFields: ['QueryName', 'QueryType', 'ResponseCode', 'ColoCode'] },
-  { dataset: 'spectrum_events', requiredFields: ['Application', 'Event', 'OriginIP'] },
-  { dataset: 'nel_reports', requiredFields: ['Type', 'URL', 'Body'] },
-  { dataset: 'page_shield_events', requiredFields: ['ScriptURL', 'PageURL'] },
-  { dataset: 'zaraz_events', requiredFields: ['EventType', 'Tool'] },
+  { 
+    dataset: 'http_requests', 
+    uniqueFields: ['EdgeStartTimestamp', 'EdgeResponseStatus', 'EdgeColoCode', 'RayID'],
+    commonFields: ['ClientRequestHost', 'ClientRequestMethod', 'ClientIP', 'CacheCacheStatus'],
+    minScore: 4
+  },
+  { 
+    dataset: 'firewall_events', 
+    uniqueFields: ['Action', 'Source', 'RuleID', 'Datetime', 'Kind'],
+    commonFields: ['ClientRequestHost', 'ClientIP', 'EdgeResponseStatus'],
+    minScore: 4
+  },
+  { 
+    dataset: 'dns_logs', 
+    uniqueFields: ['QueryName', 'QueryType', 'ResponseCode', 'ColoCode'],
+    commonFields: ['SourceIP', 'Timestamp', 'ResponseCached'],
+    minScore: 4
+  },
+  { 
+    dataset: 'spectrum_events', 
+    uniqueFields: ['Application', 'Event', 'OriginIP', 'ConnectTimestamp'],
+    commonFields: ['ClientIP', 'Status'],
+    minScore: 3
+  },
+  { 
+    dataset: 'nel_reports', 
+    uniqueFields: ['Type', 'Body', 'Phase'],
+    commonFields: ['URL', 'Timestamp'],
+    minScore: 3
+  },
+  { 
+    dataset: 'page_shield_events', 
+    uniqueFields: ['ScriptURL', 'PageURL'],
+    commonFields: ['Action', 'Timestamp'],
+    minScore: 2
+  },
+  { 
+    dataset: 'zaraz_events', 
+    uniqueFields: ['EventType', 'Tool', 'ZarazWorkerID'],
+    commonFields: ['ClientIP', 'Timestamp'],
+    minScore: 2
+  },
   
   // Account-scoped datasets
-  { dataset: 'audit_logs', requiredFields: ['ActionType', 'ID', 'When'] },
-  { dataset: 'audit_logs_v2', requiredFields: ['ActionTimestamp', 'AuditLogID', 'ActorEmail'] },
-  { dataset: 'access_requests', requiredFields: ['Action', 'AppDomain', 'CreatedAt'] },
-  { dataset: 'gateway_dns', requiredFields: ['QueryName', 'QueryType', 'PolicyName'] },
-  { dataset: 'gateway_http', requiredFields: ['URL', 'Action', 'PolicyName', 'HTTPMethod'] },
-  { dataset: 'gateway_network', requiredFields: ['DestinationIP', 'Protocol', 'PolicyName'] },
-  { dataset: 'workers_trace_events', requiredFields: ['ScriptName', 'Event', 'EventTimestampMs'] },
-  { dataset: 'zero_trust_network_sessions', requiredFields: ['SessionStartTime', 'UserEmail', 'DeviceID'] },
-  { dataset: 'biso_user_actions', requiredFields: ['Action', 'URL', 'UserEmail', 'Timestamp'] },
-  { dataset: 'casb_findings', requiredFields: ['FindingType', 'IntegrationName', 'DetectedTimestamp'] },
-  { dataset: 'device_posture_results', requiredFields: ['RuleName', 'DeviceID', 'Result'] },
-  { dataset: 'dex_application_tests', requiredFields: ['ApplicationID', 'TestName'] },
-  { dataset: 'dex_device_state_events', requiredFields: ['DeviceID', 'StateType'] },
-  { dataset: 'dlp_forensic_copies', requiredFields: ['RuleID', 'Content'] },
-  { dataset: 'dns_firewall_logs', requiredFields: ['ClusterID', 'QueryName'] },
-  { dataset: 'email_security_alerts', requiredFields: ['AlertType', 'Sender', 'Recipient'] },
-  { dataset: 'ipsec_logs', requiredFields: ['TunnelID', 'TunnelName'] },
-  { dataset: 'magic_ids_detections', requiredFields: ['DetectionID', 'SignatureID'] },
-  { dataset: 'network_analytics_logs', requiredFields: ['DestinationIP', 'SourceIP', 'Protocol', 'AttackID'] },
-  { dataset: 'sinkhole_http_logs', requiredFields: ['R2Path', 'AccountID'] },
-  { dataset: 'ssh_logs', requiredFields: ['UserEmail', 'SessionID'] },
-  { dataset: 'warp_config_changes', requiredFields: ['ConfigType', 'OldValue', 'NewValue'] },
-  { dataset: 'warp_toggle_changes', requiredFields: ['ToggleType', 'OldState', 'NewState'] }
+  { 
+    dataset: 'audit_logs', 
+    uniqueFields: ['ID', 'When', 'ActorEmail', 'ActorType', 'Interface'],
+    commonFields: ['ActionType', 'ActionResult', 'ResourceType', 'ActorIP', 'OldValue', 'NewValue'],
+    minScore: 3
+  },
+  { 
+    dataset: 'audit_logs_v2', 
+    uniqueFields: ['AuditLogID', 'ActionTimestamp', 'ActorContext', 'AccountName'],
+    commonFields: ['ActionType', 'ActorEmail', 'ResourceType', 'ActionResult'],
+    minScore: 3
+  },
+  { 
+    dataset: 'access_requests', 
+    uniqueFields: ['AppDomain', 'AppUUID', 'CreatedAt'],
+    commonFields: ['Action', 'UserEmail', 'IPAddress'],
+    minScore: 3
+  },
+  { 
+    dataset: 'gateway_dns', 
+    uniqueFields: ['QueryName', 'QueryType', 'PolicyName', 'ResolverDecision'],
+    commonFields: ['SourceIP', 'Datetime', 'Location'],
+    minScore: 4
+  },
+  { 
+    dataset: 'gateway_http', 
+    uniqueFields: ['HTTPMethod', 'PolicyName', 'RequestID'],
+    commonFields: ['URL', 'Action', 'UserEmail', 'SourceIP'],
+    minScore: 3
+  },
+  { 
+    dataset: 'gateway_network', 
+    uniqueFields: ['DestinationIP', 'DestinationPort', 'PolicyName', 'SessionID'],
+    commonFields: ['Protocol', 'Action', 'SourceIP'],
+    minScore: 4
+  },
+  { 
+    dataset: 'workers_trace_events', 
+    uniqueFields: ['ScriptName', 'EventTimestampMs', 'DispatchNamespace'],
+    commonFields: ['Event', 'Outcome'],
+    minScore: 2
+  },
+  { 
+    dataset: 'zero_trust_network_sessions', 
+    uniqueFields: ['SessionStartTime', 'DeviceID', 'VirtualNetworkID'],
+    commonFields: ['UserEmail', 'SessionState'],
+    minScore: 3
+  },
+  { 
+    dataset: 'biso_user_actions', 
+    uniqueFields: ['IsolatedSessionID', 'BrowserType'],
+    commonFields: ['Action', 'URL', 'UserEmail', 'Timestamp'],
+    minScore: 2
+  },
+  { 
+    dataset: 'casb_findings', 
+    uniqueFields: ['FindingType', 'IntegrationName', 'IntegrationPolicyVendor'],
+    commonFields: ['DetectedTimestamp', 'Severity'],
+    minScore: 2
+  },
+  { 
+    dataset: 'device_posture_results', 
+    uniqueFields: ['RuleName', 'DeviceID', 'PostureCheckType'],
+    commonFields: ['Result', 'Timestamp'],
+    minScore: 3
+  },
+  { 
+    dataset: 'dex_application_tests', 
+    uniqueFields: ['ApplicationID', 'TestName', 'ColoCode'],
+    commonFields: ['Timestamp'],
+    minScore: 2
+  },
+  { 
+    dataset: 'dex_device_state_events', 
+    uniqueFields: ['DeviceID', 'StateType', 'Version'],
+    commonFields: ['Timestamp'],
+    minScore: 2
+  },
+  { 
+    dataset: 'dlp_forensic_copies', 
+    uniqueFields: ['RuleID', 'Content', 'ProfileID'],
+    commonFields: ['Timestamp'],
+    minScore: 2
+  },
+  { 
+    dataset: 'dns_firewall_logs', 
+    uniqueFields: ['ClusterID', 'UpstreamIP'],
+    commonFields: ['QueryName', 'Timestamp'],
+    minScore: 2
+  },
+  { 
+    dataset: 'email_security_alerts', 
+    uniqueFields: ['AlertType', 'Sender', 'Recipient', 'MessageID'],
+    commonFields: ['Timestamp'],
+    minScore: 3
+  },
+  { 
+    dataset: 'ipsec_logs', 
+    uniqueFields: ['TunnelID', 'TunnelName', 'TunnelHealth'],
+    commonFields: ['Timestamp'],
+    minScore: 2
+  },
+  { 
+    dataset: 'magic_ids_detections', 
+    uniqueFields: ['DetectionID', 'SignatureID', 'SignatureMessage'],
+    commonFields: ['Timestamp'],
+    minScore: 2
+  },
+  { 
+    dataset: 'network_analytics_logs', 
+    uniqueFields: ['AttackID', 'AttackType', 'MitigationType'],
+    commonFields: ['DestinationIP', 'SourceIP', 'Protocol', 'Timestamp'],
+    minScore: 3
+  },
+  { 
+    dataset: 'sinkhole_http_logs', 
+    uniqueFields: ['R2Path', 'SinkholeID'],
+    commonFields: ['AccountID', 'Timestamp'],
+    minScore: 2
+  },
+  { 
+    dataset: 'ssh_logs', 
+    uniqueFields: ['SessionID', 'SSHPublicKey'],
+    commonFields: ['UserEmail', 'Timestamp'],
+    minScore: 2
+  },
+  { 
+    dataset: 'warp_config_changes', 
+    uniqueFields: ['ConfigType', 'DeviceID'],
+    commonFields: ['OldValue', 'NewValue', 'Timestamp'],
+    minScore: 2
+  },
+  { 
+    dataset: 'warp_toggle_changes', 
+    uniqueFields: ['ToggleType', 'DeviceID'],
+    commonFields: ['OldState', 'NewState', 'Timestamp'],
+    minScore: 2
+  }
 ]
 
 // Field mappings for extracting common fields from different datasets
@@ -150,19 +309,37 @@ function extractField(data: Record<string, unknown>, fieldMap: Record<string, st
 }
 
 /**
- * Detect dataset from log entry fields
+ * Detect dataset from log entry fields using scoring
+ * Unique fields score 2 points, common fields score 1 point
+ * Highest scoring dataset above minimum threshold wins
  */
 function detectDataset(data: Record<string, unknown>): Dataset | null {
-  const dataFields = Object.keys(data)
+  const dataFields = new Set(Object.keys(data))
+  
+  let bestMatch: { dataset: Dataset; score: number } | null = null
   
   for (const sig of DATASET_SIGNATURES) {
-    const hasRequired = sig.requiredFields.every(f => dataFields.includes(f))
-    if (hasRequired) {
-      return sig.dataset
+    let score = 0
+    
+    // Unique fields worth 2 points each
+    for (const field of sig.uniqueFields) {
+      if (dataFields.has(field)) score += 2
+    }
+    
+    // Common fields worth 1 point each
+    for (const field of sig.commonFields) {
+      if (dataFields.has(field)) score += 1
+    }
+    
+    // Must meet minimum score threshold
+    if (score >= sig.minScore) {
+      if (!bestMatch || score > bestMatch.score) {
+        bestMatch = { dataset: sig.dataset, score }
+      }
     }
   }
   
-  return null
+  return bestMatch?.dataset || null
 }
 
 export default defineEventHandler(async (event) => {
