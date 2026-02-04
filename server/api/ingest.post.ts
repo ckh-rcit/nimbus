@@ -90,15 +90,33 @@ const DATASET_SIGNATURES: Array<{
   // Account-scoped datasets
   { 
     dataset: 'audit_logs', 
-    uniqueFields: ['ID', 'When', 'ActorEmail', 'ActorType', 'Interface'],
-    commonFields: ['ActionType', 'ActionResult', 'ResourceType', 'ActorIP', 'OldValue', 'NewValue'],
-    minScore: 3
+    uniqueFields: [
+      // Key identifiers - audit_logs uses 'ID' and 'When', not 'AuditLogID' and 'ActionTimestamp'
+      'ID', 'When', 'Interface', 'OwnerID',
+      // Actor fields - uses 'ActorIP' not 'ActorIPAddress'
+      'ActorEmail', 'ActorID', 'ActorIP', 'ActorType',
+      // Resource fields
+      'Metadata', 'NewValue', 'OldValue'
+    ],
+    commonFields: ['ActionType', 'ActionResult', 'ResourceType', 'ResourceID'],
+    minScore: 4
   },
   { 
     dataset: 'audit_logs_v2', 
-    uniqueFields: ['AuditLogID', 'ActionTimestamp', 'ActorContext', 'AccountName'],
-    commonFields: ['ActionType', 'ActorEmail', 'ResourceType', 'ActionResult'],
-    minScore: 3
+    uniqueFields: [
+      // Key identifiers - audit_logs_v2 uses 'AuditLogID' and 'ActionTimestamp'
+      'AuditLogID', 'ActionTimestamp', 'ActionDescription',
+      // Account fields
+      'AccountID', 'AccountName',
+      // Actor fields - uses 'ActorIPAddress' not 'ActorIP', has ActorContext and ActorTokenDetails
+      'ActorContext', 'ActorIPAddress', 'ActorTokenDetails',
+      // Resource fields - more detailed than v1
+      'ResourceProduct', 'ResourceRequest', 'ResourceResponse', 'ResourceScope', 'ResourceValue',
+      // Zone fields
+      'ZoneID', 'ZoneName', 'Raw'
+    ],
+    commonFields: ['ActionType', 'ActionResult', 'ActorEmail', 'ActorID', 'ActorType', 'ResourceType', 'ResourceID'],
+    minScore: 4
   },
   { 
     dataset: 'access_requests', 
