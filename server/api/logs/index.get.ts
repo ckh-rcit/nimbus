@@ -11,10 +11,22 @@ export default defineEventHandler(async (event) => {
   const zoneId = query.zoneId as string | undefined
   const accountId = query.accountId as string | undefined
   const search = query.search as string | undefined
+  const searchField = query.searchField as string | undefined
+  const filtersJson = query.filters as string | undefined
   const startTime = query.startTime as string | undefined
   const endTime = query.endTime as string | undefined
   const limit = Math.min(parseInt(query.limit as string) || 100, 1000)
   const offset = parseInt(query.offset as string) || 0
+
+  // Parse filters if provided
+  let filters: Array<{ field: string; value: string }> = []
+  if (filtersJson) {
+    try {
+      filters = JSON.parse(filtersJson)
+    } catch {
+      // Ignore invalid JSON
+    }
+  }
 
   // Validate dataset if provided
   if (dataset && !ALL_DATASETS.includes(dataset)) {
@@ -60,15 +72,49 @@ export default defineEventHandler(async (event) => {
     conditions.push(lte(schema.logs.timestamp, new Date(endTime)))
   }
 
-  // Search in rayId, clientIp, or JSONB data
+  // Search - field-specific or global
   if (search) {
-    conditions.push(
-      or(
-        ilike(schema.logs.rayId, `%${search}%`),
-        ilike(schema.logs.clientIp, `%${search}%`),
-        sql`${schema.logs.data}::text ILIKE ${'%' + search + '%'}`
+    if (searchField) {
+      // Field-specific search
+      if (searchField === 'clientIp') {
+        conditions.push(ilike(schema.logs.clientIp, `%${search}%`))
+      } else if (searchField === 'rayId') {
+        conditions.push(ilike(schema.logs.rayId, `%${search}%`))
+      } else if (searchField.startsWith('data.')) {
+        // Search in specific JSONB field
+        const jsonPath = searchField.replace('data.', '')
+        conditions.push(
+          sql`${schema.logs.data}->>${jsonPath} ILIKE ${'%' + search + '%'}`
+        )
+      }
+    } else {
+      // Global search in rayId, clientIp, or JSONB data
+      conditions.push(
+        or(
+          ilike(schema.logs.rayId, `%${search}%`),
+          ilike(schema.logs.clientIp, `%${search}%`),
+          sql`${schema.logs.data}::text ILIKE ${'%' + search + '%'}`
+        )
       )
-    )
+    }
+  }
+
+  // Apply additional filters
+  for (const filter of filters) {
+    if (filter.field === 'clientIp') {
+      conditions.push(eq(schema.logs.clientIp, filter.value))
+    } else if (filter.field === 'rayId') {
+      conditions.push(eq(schema.logs.rayId, filter.value))
+    } else if (filter.field === 'zoneName') {
+      // Join already handles this, need to filter by zone name
+      conditions.push(eq(schema.zones.name, filter.value))
+    } else if (filter.field.startsWith('data.')) {
+      // Exact match in JSONB field
+      const jsonPath = filter.field.replace('data.', '')
+      conditions.push(
+        sql`${schema.logs.data}->>${jsonPath} = ${filter.value}`
+      )
+    }
   }
 
   // Execute query with zone name join

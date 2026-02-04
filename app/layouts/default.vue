@@ -122,22 +122,6 @@ const isActive = (path: string) => route.path === path
           </NuxtLink>
         </div>
       </nav>
-
-      <!-- Sync Button -->
-      <div class="nimbus-sync">
-        <button
-          class="nimbus-sync-btn"
-          :disabled="syncing"
-          @click="handleSyncZones"
-        >
-          <UIcon 
-            name="i-heroicons-arrow-path" 
-            class="w-4 h-4"
-            :class="{ 'animate-spin': syncing }"
-          />
-          <span>{{ syncing ? 'Syncing...' : 'Sync Zones' }}</span>
-        </button>
-      </div>
     </aside>
 
     <!-- Main Content -->
@@ -153,6 +137,18 @@ const isActive = (path: string) => route.path === path
             </select>
             <UIcon name="i-heroicons-chevron-down" class="nimbus-select-icon" />
           </div>
+          <button
+            class="nimbus-sync-icon-btn"
+            :disabled="syncing"
+            :title="syncing ? 'Syncing zones...' : 'Sync zones from Cloudflare'"
+            @click="handleSyncZones"
+          >
+            <UIcon 
+              name="i-heroicons-arrow-path" 
+              class="w-4 h-4"
+              :class="{ 'animate-spin': syncing }"
+            />
+          </button>
         </div>
 
         <!-- Right Controls -->
@@ -302,39 +298,6 @@ const isActive = (path: string) => route.path === path
   background-color: #262626;
 }
 
-/* Sync Button */
-.nimbus-sync {
-  padding: 12px;
-  border-top: 1px solid #262626;
-}
-
-.nimbus-sync-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 12px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #a3a3a3;
-  background-color: #171717;
-  border: 1px solid #262626;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.nimbus-sync-btn:hover {
-  color: #fafafa;
-  background-color: #262626;
-}
-
-.nimbus-sync-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 /* Main Content */
 .nimbus-main {
   flex: 1;
@@ -360,6 +323,32 @@ const isActive = (path: string) => route.path === path
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* Sync Icon Button */
+.nimbus-sync-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: #737373;
+  background-color: transparent;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nimbus-sync-icon-btn:hover {
+  color: #f6821f;
+  border-color: #f6821f;
+  background-color: rgba(246, 130, 31, 0.1);
+}
+
+.nimbus-sync-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Select */
