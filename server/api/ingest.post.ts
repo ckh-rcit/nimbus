@@ -105,6 +105,17 @@ const ZONE_ID_FIELDS: Record<string, string> = {
   dns_logs: 'ZoneID'
 }
 
+// Fields containing host/domain for zone lookup fallback
+const HOST_FIELDS: Record<string, string> = {
+  http_requests: 'ClientRequestHost',
+  firewall_events: 'ClientRequestHost',
+  dns_logs: 'QueryName',
+  nel_reports: 'URL',
+  spectrum_events: 'ClientIP',
+  page_shield_events: 'Host',
+  zaraz_events: 'ClientRequestHost'
+}
+
 function parseTimestamp(value: unknown): Date {
   if (!value) return new Date()
   
@@ -239,6 +250,13 @@ export default defineEventHandler(async (event) => {
   const logsToInsert: Array<typeof schema.logs.$inferInsert> = []
   const accountId = config.cloudflareAccountId
   
+  // Load zones for host-to-zone lookup
+  const zones = await db.select({ id: schema.zones.id, name: schema.zones.name }).from(schema.zones)
+  const zoneMap = new Map<string, string>()
+  for (const zone of zones) {
+    zoneMap.set(zone.name.toLowerCase(), zone.id)
+  }
+  
   // Track detected dataset for response
   let detectedDataset: Dataset | null = null
 
@@ -264,7 +282,39 @@ export default defineEventHandler(async (event) => {
       const timestamp = parseTimestamp(data[timestampField])
       const rayId = extractField(data, RAY_ID_FIELDS, dataset)
       const clientIp = extractField(data, CLIENT_IP_FIELDS, dataset)
-      const zoneId = scope === 'zone' ? extractField(data, ZONE_ID_FIELDS, dataset) : null
+      
+      // Extract zoneId - try ZoneID field first, then fall back to host lookup
+      let zoneId: string | null = null
+      if (scope === 'zone') {
+        zoneId = extractField(data, ZONE_ID_FIELDS, dataset)
+        
+        // If no ZoneID, try to look up by host
+        if (!zoneId) {
+          const hostField = HOST_FIELDS[dataset]
+          if (hostField && data[hostField]) {
+            let host = (data[hostField] as string).toLowerCase()
+            
+            // Extract hostname from URL if needed
+            if (host.startsWith('http')) {
+              try { host = new URL(host).hostname } catch {}
+            }
+            
+            // Try exact match first, then parent domains
+            if (zoneMap.has(host)) {
+              zoneId = zoneMap.get(host)!
+            } else {
+              const parts = host.split('.')
+              for (let i = 0; i < parts.length - 1; i++) {
+                const parentDomain = parts.slice(i).join('.')
+                if (zoneMap.has(parentDomain)) {
+                  zoneId = zoneMap.get(parentDomain)!
+                  break
+                }
+              }
+            }
+          }
+        }
+      }
 
       logsToInsert.push({
         dataset,
