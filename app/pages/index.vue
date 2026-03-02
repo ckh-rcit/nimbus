@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ZONE_DATASET_CONFIGS, ACCOUNT_DATASET_CONFIGS } from '~~/shared/types'
+import { ZONE_DATASET_CONFIGS } from '~~/shared/types'
 
 definePageMeta({
   layout: 'default'
@@ -44,20 +44,8 @@ const zoneDatasetCards = computed(() => {
   }))
 })
 
-// Account dataset cards with counts
-const accountDatasetCards = computed(() => {
-  const counts = stats.value?.datasetCounts || {}
-  return ACCOUNT_DATASET_CONFIGS.map(ds => ({
-    label: ds.label,
-    dataset: ds.id,
-    icon: ds.icon,
-    count: counts[ds.id] || 0
-  }))
-})
-
 // Filter to only show datasets with logs
 const activeZoneDatasets = computed(() => zoneDatasetCards.value.filter(d => d.count > 0))
-const activeAccountDatasets = computed(() => accountDatasetCards.value.filter(d => d.count > 0))
 </script>
 
 <template>
@@ -140,30 +128,7 @@ const activeAccountDatasets = computed(() => accountDatasetCards.value.filter(d 
       </div>
     </div>
 
-    <!-- Account Datasets -->
-    <div class="section" v-if="activeAccountDatasets.length > 0 || !selectedZone">
-      <h2 class="section-title">Account Datasets</h2>
-      <div class="dataset-grid">
-        <NuxtLink
-          v-for="card in accountDatasetCards"
-          :key="card.dataset"
-          :to="`/logs/${card.dataset}`"
-          class="dataset-card"
-          :class="{ 'dataset-card-empty': card.count === 0 }"
-        >
-          <div class="dataset-card-left">
-            <div class="dataset-icon">
-              <UIcon :name="card.icon" class="w-5 h-5" />
-            </div>
-            <div class="dataset-info">
-              <p class="dataset-name">{{ card.label }}</p>
-              <p class="dataset-count">{{ formatNumber(card.count) }} logs</p>
-            </div>
-          </div>
-          <UIcon name="i-heroicons-chevron-right" class="w-5 h-5 dataset-arrow" />
-        </NuxtLink>
-      </div>
-    </div>
+
   </div>
 </template>
 
