@@ -24,6 +24,12 @@ const { data: stats, refresh: refreshStats } = await useFetch('/api/stats', {
 })
 const { data: zonesData } = await useFetch('/api/zones')
 
+// Fetch top talkers
+const { data: topTalkers } = await useFetch('/api/stats/top-talkers', {
+  query: statsQuery,
+  watch: [statsQuery]
+})
+
 // Get selected zone name for display
 const selectedZoneName = computed(() => {
   if (!selectedZone.value) return 'All Zones'
@@ -33,19 +39,41 @@ const selectedZoneName = computed(() => {
 
 const formatNumber = (n: number) => new Intl.NumberFormat().format(n)
 
-// Zone dataset cards with counts
+// Relative time formatter
+function timeAgo(timestamp: string | null | undefined): string {
+  if (!timestamp) return 'Never'
+  const diff = Date.now() - new Date(timestamp).getTime()
+  const seconds = Math.floor(diff / 1000)
+  if (seconds < 60) return 'Just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
+// Zone dataset cards with counts and last seen
 const zoneDatasetCards = computed(() => {
   const counts = stats.value?.datasetCounts || {}
+  const latest = stats.value?.latestByDataset || {}
   return ZONE_DATASET_CONFIGS.map(ds => ({
     label: ds.label,
     dataset: ds.id,
     icon: ds.icon,
-    count: counts[ds.id] || 0
+    count: counts[ds.id] || 0,
+    lastSeen: latest[ds.id] || null
   }))
 })
 
 // Filter to only show datasets with logs
 const activeZoneDatasets = computed(() => zoneDatasetCards.value.filter(d => d.count > 0))
+
+// Max count for bar width calculation
+function barWidth(count: number, items: Array<{ count: number }>): string {
+  const max = Math.max(...items.map(i => i.count), 1)
+  return `${Math.max((count / max) * 100, 2)}%`
+}
 </script>
 
 <template>
@@ -121,10 +149,101 @@ const activeZoneDatasets = computed(() => zoneDatasetCards.value.filter(d => d.c
             <div class="dataset-info">
               <p class="dataset-name">{{ card.label }}</p>
               <p class="dataset-count">{{ formatNumber(card.count) }} logs</p>
+              <p class="dataset-last-seen" :class="{ 'stale': !card.lastSeen }">
+                <UIcon name="i-heroicons-clock" class="w-3 h-3" />
+                {{ timeAgo(card.lastSeen) }}
+              </p>
             </div>
           </div>
           <UIcon name="i-heroicons-chevron-right" class="w-5 h-5 dataset-arrow" />
         </NuxtLink>
+      </div>
+    </div>
+
+    <!-- Top Talkers -->
+    <div class="section" v-if="topTalkers && (topTalkers.topIps?.length || topTalkers.topHosts?.length)">
+      <h2 class="section-title">Top Talkers <span class="section-subtitle">(last 24h)</span></h2>
+      <div class="talkers-grid">
+        <!-- Top Client IPs -->
+        <div class="talker-card" v-if="topTalkers.topIps?.length">
+          <h3 class="talker-title">
+            <UIcon name="i-heroicons-user" class="w-4 h-4" />
+            Top Client IPs
+          </h3>
+          <div class="talker-list">
+            <div v-for="item in topTalkers.topIps" :key="item.value" class="talker-item">
+              <div class="talker-info">
+                <span class="talker-value font-mono">{{ item.value }}</span>
+                <span class="talker-count">{{ formatNumber(item.count) }}</span>
+              </div>
+              <div class="talker-bar-track">
+                <div class="talker-bar" :style="{ width: barWidth(item.count, topTalkers.topIps!) }"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Hosts -->
+        <div class="talker-card" v-if="topTalkers.topHosts?.length">
+          <h3 class="talker-title">
+            <UIcon name="i-heroicons-globe-alt" class="w-4 h-4" />
+            Top Hosts
+          </h3>
+          <div class="talker-list">
+            <div v-for="item in topTalkers.topHosts" :key="item.value" class="talker-item">
+              <div class="talker-info">
+                <span class="talker-value">{{ item.value }}</span>
+                <span class="talker-count">{{ formatNumber(item.count) }}</span>
+              </div>
+              <div class="talker-bar-track">
+                <div class="talker-bar" :style="{ width: barWidth(item.count, topTalkers.topHosts!) }"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Status Codes -->
+        <div class="talker-card" v-if="topTalkers.topStatuses?.length">
+          <h3 class="talker-title">
+            <UIcon name="i-heroicons-signal" class="w-4 h-4" />
+            Top Status Codes
+          </h3>
+          <div class="talker-list">
+            <div v-for="item in topTalkers.topStatuses" :key="item.value" class="talker-item">
+              <div class="talker-info">
+                <span class="talker-value">
+                  <span class="status-dot" :class="'status-' + item.value.charAt(0) + 'xx'"></span>
+                  {{ item.value }}
+                </span>
+                <span class="talker-count">{{ formatNumber(item.count) }}</span>
+              </div>
+              <div class="talker-bar-track">
+                <div class="talker-bar" :style="{ width: barWidth(item.count, topTalkers.topStatuses!) }"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Firewall Actions -->
+        <div class="talker-card" v-if="topTalkers.topActions?.length">
+          <h3 class="talker-title">
+            <UIcon name="i-heroicons-shield-check" class="w-4 h-4" />
+            Firewall Actions
+          </h3>
+          <div class="talker-list">
+            <div v-for="item in topTalkers.topActions" :key="item.value" class="talker-item">
+              <div class="talker-info">
+                <span class="talker-value">
+                  <span class="action-badge" :class="'action-' + item.value.toLowerCase()">{{ item.value }}</span>
+                </span>
+                <span class="talker-count">{{ formatNumber(item.count) }}</span>
+              </div>
+              <div class="talker-bar-track">
+                <div class="talker-bar" :class="'bar-' + item.value.toLowerCase()" :style="{ width: barWidth(item.count, topTalkers.topActions!) }"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -313,8 +432,137 @@ const activeZoneDatasets = computed(() => zoneDatasetCards.value.filter(d => d.c
   margin: 0;
 }
 
+.dataset-last-seen {
+  font-size: 11px;
+  color: #525252;
+  margin: 2px 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dataset-last-seen.stale {
+  color: #dc2626;
+}
+
 .dataset-arrow {
   color: #525252;
   flex-shrink: 0;
 }
+
+/* Top Talkers */
+.section-subtitle {
+  font-size: 12px;
+  font-weight: 400;
+  color: #525252;
+}
+
+.talkers-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1200px) {
+  .talkers-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.talker-card {
+  background-color: #141414;
+  border: 1px solid #262626;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.talker-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #a3a3a3;
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.talker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.talker-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.talker-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.talker-value {
+  font-size: 13px;
+  color: #d4d4d4;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.talker-count {
+  font-size: 12px;
+  color: #737373;
+  font-variant-numeric: tabular-nums;
+}
+
+.talker-bar-track {
+  width: 100%;
+  height: 4px;
+  background-color: #262626;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.talker-bar {
+  height: 100%;
+  background-color: #f6821f;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Status dots */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-2xx { background-color: #22c55e; }
+.status-3xx { background-color: #3b82f6; }
+.status-4xx { background-color: #eab308; }
+.status-5xx { background-color: #ef4444; }
+
+/* Action badges */
+.action-badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.action-allow { background-color: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.action-block { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.action-challenge, .action-jschallenge, .action-managedchallenge { background-color: rgba(234, 179, 8, 0.15); color: #eab308; }
+.action-log { background-color: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+
+/* Colored bars for firewall actions */
+.bar-block { background-color: #ef4444; }
+.bar-challenge, .bar-jschallenge, .bar-managedchallenge { background-color: #eab308; }
+.bar-allow { background-color: #22c55e; }
+.bar-log { background-color: #3b82f6; }
 </style>

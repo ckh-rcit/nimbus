@@ -139,96 +139,7 @@ const datasetColumnsConfig: Record<string, Array<{ key: string; label: string }>
     { key: 'data.ResponseCode', label: 'Response' },
     { key: 'data.ResponseCached', label: 'Cached' },
     { key: 'data.ColoCode', label: 'Colo' }
-  ],
-    spectrum_events: [
-      { key: 'data.Application', label: 'Application' },
-      { key: 'data.Event', label: 'Event' },
-      { key: 'data.OriginIP', label: 'Origin' }
-    ],
-    nel_reports: [
-      { key: 'data.Type', label: 'Type' },
-      { key: 'data.URL', label: 'URL' },
-      { key: 'data.StatusCode', label: 'Status' }
-    ],
-    page_shield_events: [
-      { key: 'data.ScriptURL', label: 'Script URL' },
-      { key: 'data.Action', label: 'Action' }
-    ],
-    zaraz_events: [
-      { key: 'data.EventType', label: 'Event Type' },
-      { key: 'data.Tool', label: 'Tool' }
-    ],
-    
-    // Account-scoped datasets
-    audit_logs: [
-      { key: 'data.ActionType', label: 'Action' },
-      { key: 'data.ActorEmail', label: 'Actor' },
-      { key: 'data.ResourceType', label: 'Resource' }
-    ],
-    audit_logs_v2: [
-      { key: 'data.ActionType', label: 'Action' },
-      { key: 'data.ActorEmail', label: 'Actor' },
-      { key: 'data.ResourceType', label: 'Resource' },
-      { key: 'data.ActionResult', label: 'Result' }
-    ],
-    access_requests: [
-      { key: 'data.Action', label: 'Action' },
-      { key: 'data.AppDomain', label: 'App' },
-      { key: 'data.UserEmail', label: 'User' }
-    ],
-    gateway_dns: [
-      { key: 'data.QueryName', label: 'Query' },
-      { key: 'data.QueryType', label: 'Type' },
-      { key: 'data.PolicyName', label: 'Policy' },
-      { key: 'data.ResolvedIPs', label: 'Resolved IPs' }
-    ],
-    gateway_http: [
-      { key: 'data.URL', label: 'URL' },
-      { key: 'data.Action', label: 'Action' },
-      { key: 'data.PolicyName', label: 'Policy' },
-      { key: 'data.UserEmail', label: 'User' }
-    ],
-    gateway_network: [
-      { key: 'data.DestinationIP', label: 'Destination' },
-      { key: 'data.Protocol', label: 'Protocol' },
-      { key: 'data.PolicyName', label: 'Policy' },
-      { key: 'data.Action', label: 'Action' }
-    ],
-    workers_trace_events: [
-      { key: 'data.ScriptName', label: 'Script' },
-      { key: 'data.Event', label: 'Event' },
-      { key: 'data.Outcome', label: 'Outcome' }
-    ],
-    zero_trust_network_sessions: [
-      { key: 'data.UserEmail', label: 'User' },
-      { key: 'data.DeviceName', label: 'Device' },
-      { key: 'data.SessionState', label: 'State' }
-    ],
-    biso_user_actions: [
-      { key: 'data.Action', label: 'Action' },
-      { key: 'data.URL', label: 'URL' },
-      { key: 'data.UserEmail', label: 'User' }
-    ],
-    casb_findings: [
-      { key: 'data.FindingType', label: 'Finding' },
-      { key: 'data.IntegrationName', label: 'Integration' },
-      { key: 'data.Severity', label: 'Severity' }
-    ],
-    device_posture_results: [
-      { key: 'data.RuleName', label: 'Rule' },
-      { key: 'data.DeviceName', label: 'Device' },
-      { key: 'data.Result', label: 'Result' }
-    ],
-    email_security_alerts: [
-      { key: 'data.AlertType', label: 'Alert' },
-      { key: 'data.Sender', label: 'Sender' },
-      { key: 'data.Recipient', label: 'Recipient' }
-    ],
-    network_analytics_logs: [
-      { key: 'data.DestinationIP', label: 'Destination' },
-      { key: 'data.Protocol', label: 'Protocol' },
-      { key: 'data.Action', label: 'Action' }
-    ]
+  ]
 }
 
 // Get dataset-specific columns
@@ -364,6 +275,134 @@ function getColumnStyle(col: string) {
   const width = columnWidths.value[col]
   return width ? { width: `${width}px`, minWidth: `${width}px` } : {}
 }
+
+// Field grouping for friendly detail view
+const FIELD_GROUPS: Record<string, Record<string, string[]>> = {
+  http_requests: {
+    'Request': ['ClientRequestMethod', 'ClientRequestHost', 'ClientRequestPath', 'ClientRequestURI', 'ClientRequestProtocol', 'ClientRequestScheme', 'ClientRequestReferer', 'ClientRequestUserAgent', 'ClientRequestSource', 'ClientRequestBytes', 'ClientDeviceType', 'ClientXRequestedWith', 'Cookies', 'EdgeRequestHost', 'RequestHeaders'],
+    'Client': ['ClientIP', 'ClientASN', 'ClientCountry', 'ClientCity', 'ClientRegionCode', 'ClientLatitude', 'ClientLongitude', 'ClientIPClass', 'ClientSrcPort', 'ClientTCPRTTMs'],
+    'Response': ['EdgeResponseStatus', 'EdgeResponseContentType', 'EdgeResponseBytes', 'EdgeResponseBodyBytes', 'EdgeResponseCompressionRatio', 'OriginResponseStatus', 'OriginResponseBytes', 'OriginIP', 'OriginResponseHTTPExpires', 'OriginResponseHTTPLastModified', 'ResponseHeaders'],
+    'Cache': ['CacheCacheStatus', 'CacheReserveUsed', 'CacheResponseBytes', 'CacheResponseStatus', 'CacheTieredFill'],
+    'Performance': ['EdgeStartTimestamp', 'EdgeEndTimestamp', 'EdgeTimeToFirstByteMs', 'OriginDNSResponseTimeMs', 'OriginRequestHeaderSendDurationMs', 'OriginResponseDurationMs', 'OriginResponseHeaderReceiveDurationMs', 'OriginResponseTime', 'OriginTCPHandshakeDurationMs', 'OriginTLSHandshakeDurationMs', 'WorkerCPUTime', 'WorkerWallTimeUs'],
+    'Security': ['SecurityAction', 'SecurityActions', 'SecurityRuleID', 'SecurityRuleIDs', 'SecurityRuleDescription', 'SecuritySources', 'WAFAttackScore', 'WAFRCEAttackScore', 'WAFSQLiAttackScore', 'WAFXSSAttackScore', 'WAFFlags', 'WAFMatchedVar', 'ContentScanObjResults', 'ContentScanObjTypes', 'ContentScanObjSizes', 'EdgePathingSrc', 'EdgePathingStatus', 'EdgePathingOp', 'JA3Hash', 'JA4', 'JA4Signals', 'JSDetectionPassed', 'LeakedCredentialCheckResult'],
+    'Bot': ['BotScore', 'BotScoreSrc', 'BotTags', 'BotDetectionIDs', 'BotDetectionTags', 'VerifiedBotCategory'],
+    'TLS': ['ClientSSLProtocol', 'ClientSSLCipher', 'ClientMTLSAuthStatus', 'ClientMTLSAuthCertFingerprint', 'OriginSSLProtocol'],
+    'Edge': ['EdgeColoCode', 'EdgeColoID', 'EdgeCFConnectingO2O', 'EdgeServerIP', 'SmartRouteColoID', 'UpperTierColoID'],
+    'Worker': ['WorkerStatus', 'WorkerScriptName', 'WorkerSubrequest', 'WorkerSubrequestCount'],
+    'General': ['RayID', 'ParentRayID', 'ZoneName', 'PayPerCrawlStatus']
+  },
+  firewall_events: {
+    'Event': ['Action', 'Source', 'Kind', 'Description', 'RuleID', 'Ref', 'MatchIndex', 'Metadata'],
+    'Request': ['ClientRequestHost', 'ClientRequestMethod', 'ClientRequestPath', 'ClientRequestProtocol', 'ClientRequestQuery', 'ClientRequestScheme', 'ClientRequestUserAgent'],
+    'Client': ['ClientIP', 'ClientASN', 'ClientASNDescription', 'ClientCountry', 'ClientIPClass', 'ClientRefererHost', 'ClientRefererPath', 'ClientRefererQuery', 'ClientRefererScheme'],
+    'Response': ['EdgeResponseStatus', 'OriginResponseStatus', 'EdgeColoCode'],
+    'Security': ['ContentScanObjResults', 'ContentScanObjSizes', 'ContentScanObjTypes', 'LeakedCredentialCheckResult'],
+    'General': ['Datetime', 'RayID', 'OriginatorRayID']
+  },
+  dns_logs: {
+    'Query': ['QueryName', 'QueryType', 'ResponseCode', 'ResponseCached'],
+    'Network': ['SourceIP', 'EDNSSubnet', 'EDNSSubnetLength', 'ColoCode'],
+    'General': ['Timestamp']
+  }
+}
+
+// Group log data fields into categories
+function groupLogData(data: Record<string, any>, ds: string): Array<{ group: string; fields: Array<{ key: string; value: any }> }> {
+  const groups = FIELD_GROUPS[ds] || {}
+  const groupedFields = new Set<string>()
+  const result: Array<{ group: string; fields: Array<{ key: string; value: any }> }> = []
+
+  for (const [groupName, fieldNames] of Object.entries(groups)) {
+    const fields = fieldNames
+      .filter(f => data[f] !== undefined && data[f] !== null && data[f] !== '')
+      .map(f => {
+        groupedFields.add(f)
+        return { key: f, value: data[f] }
+      })
+    if (fields.length > 0) {
+      result.push({ group: groupName, fields })
+    }
+  }
+
+  // Collect ungrouped fields
+  const ungrouped = Object.entries(data)
+    .filter(([k]) => !groupedFields.has(k))
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .map(([k, v]) => ({ key: k, value: v }))
+  if (ungrouped.length > 0) {
+    result.push({ group: 'Other', fields: ungrouped })
+  }
+
+  return result
+}
+
+// Format field value for display
+function formatFieldValue(value: any): string {
+  if (value === null || value === undefined) return '-'
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  if (Array.isArray(value)) return value.length === 0 ? '(empty)' : value.join(', ')
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
+// Show raw JSON toggle
+const showRawJson = ref<Set<number>>(new Set())
+function toggleRawJson(id: number) {
+  if (showRawJson.value.has(id)) {
+    showRawJson.value.delete(id)
+  } else {
+    showRawJson.value.add(id)
+  }
+  showRawJson.value = new Set(showRawJson.value)
+}
+
+// Export to CSV
+function exportCsv() {
+  if (!logs.value.length) return
+
+  // Collect all unique data field keys across all logs
+  const dataKeys = new Set<string>()
+  for (const log of logs.value) {
+    if (log.data && typeof log.data === 'object') {
+      for (const key of Object.keys(log.data as Record<string, any>)) {
+        dataKeys.add(key)
+      }
+    }
+  }
+
+  const baseHeaders = ['timestamp', 'dataset', 'zoneName', 'clientIp', 'rayId']
+  const sortedDataKeys = [...dataKeys].sort()
+  const allHeaders = [...baseHeaders, ...sortedDataKeys]
+
+  const rows = logs.value.map(log => {
+    const logData = (log.data || {}) as Record<string, any>
+    return allHeaders.map(h => {
+      let val: any
+      if (baseHeaders.includes(h)) {
+        val = (log as any)[h]
+      } else {
+        val = logData[h]
+      }
+      if (val === null || val === undefined) return ''
+      if (typeof val === 'object') return JSON.stringify(val)
+      const str = String(val)
+      // Escape CSV: wrap in quotes if contains comma, newline, or quote
+      if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+        return '"' + str.replace(/"/g, '""') + '"'
+      }
+      return str
+    }).join(',')
+  })
+
+  const csv = [allHeaders.join(','), ...rows].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${dataset.value}_${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 </script>
 
 <template>
@@ -383,6 +422,15 @@ function getColumnStyle(col: string) {
         <UBadge color="neutral" variant="subtle">
           {{ pagination.total.toLocaleString() }} logs
         </UBadge>
+        <UButton
+          color="neutral"
+          variant="outline"
+          icon="i-heroicons-arrow-down-tray"
+          :disabled="logs.length === 0"
+          @click="exportCsv()"
+        >
+          Export CSV
+        </UButton>
         <UButton
           color="primary"
           variant="soft"
@@ -548,13 +596,38 @@ function getColumnStyle(col: string) {
               <tr v-if="expandedRows.has(log.id)" class="expanded-row">
                 <td :colspan="datasetSpecificColumns.length + (datasetConfig?.scope === 'zone' && !selectedZone ? 4 : 3)">
                   <div class="expanded-content">
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="text-sm font-medium text-neutral-400">Full Log Data</span>
-                      <span v-if="log.rayId" class="text-xs bg-neutral-800 px-2 py-1 rounded font-mono">
-                        Ray ID: {{ log.rayId }}
-                      </span>
+                    <div class="flex items-center justify-between mb-3">
+                      <div class="flex items-center gap-3">
+                        <span class="text-sm font-medium text-neutral-400">Log Details</span>
+                        <span v-if="log.rayId" class="text-xs bg-neutral-800 px-2 py-1 rounded font-mono text-neutral-400">
+                          Ray ID: {{ log.rayId }}
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <button class="detail-toggle" @click.stop="toggleRawJson(log.id)">
+                          <UIcon :name="showRawJson.has(log.id) ? 'i-heroicons-table-cells' : 'i-heroicons-code-bracket'" class="w-3.5 h-3.5" />
+                          {{ showRawJson.has(log.id) ? 'Formatted' : 'Raw JSON' }}
+                        </button>
+                      </div>
                     </div>
-                    <pre class="log-json">{{ JSON.stringify(log.data, null, 2) }}</pre>
+
+                    <!-- Formatted view -->
+                    <div v-if="!showRawJson.has(log.id)" class="detail-groups">
+                      <div v-for="group in groupLogData(log.data as Record<string, any>, dataset)" :key="group.group" class="detail-group">
+                        <h4 class="detail-group-title">{{ group.group }}</h4>
+                        <div class="detail-fields">
+                          <div v-for="field in group.fields" :key="field.key" class="detail-field">
+                            <span class="detail-field-key">{{ field.key }}</span>
+                            <span class="detail-field-value" :class="{ 'font-mono': typeof field.value === 'number' || field.key.includes('IP') || field.key.includes('ID') }">
+                              {{ formatFieldValue(field.value) }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Raw JSON view -->
+                    <pre v-else class="log-json">{{ JSON.stringify(log.data, null, 2) }}</pre>
                   </div>
                 </td>
               </tr>
@@ -800,6 +873,78 @@ function getColumnStyle(col: string) {
 
 .expanded-content {
   padding: 16px;
+}
+
+/* Detail toggle button */
+.detail-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #a3a3a3;
+  background: #262626;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.detail-toggle:hover {
+  background: #333;
+  color: #d4d4d4;
+}
+
+/* Formatted detail groups */
+.detail-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px;
+}
+
+.detail-group {
+  background: #1a1a1a;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.detail-group-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f6821f;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 8px 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #262626;
+}
+
+.detail-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.detail-field-key {
+  color: #737373;
+  min-width: 140px;
+  flex-shrink: 0;
+  word-break: break-all;
+}
+
+.detail-field-value {
+  color: #d4d4d4;
+  word-break: break-all;
 }
 
 .log-json {
