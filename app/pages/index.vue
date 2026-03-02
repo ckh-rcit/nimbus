@@ -235,9 +235,11 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
       <div class="talkers-grid" v-else-if="topTalkers && (topTalkers.topIps?.length || topTalkers.topHosts?.length)">
         <!-- Top Client IPs -->
         <div class="talker-card" v-if="topTalkers.topIps?.length">
-          <h3 class="talker-title" title="The devices or users sending the most requests to your sites. A single IP generating unusually high traffic may indicate a bot, scraper, or potential attack.">
+          <h3 class="talker-title has-tooltip">
             <UIcon name="i-heroicons-user" class="w-4 h-4" />
             Top Client IPs
+            <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5 tooltip-icon" />
+            <span class="custom-tooltip">The devices or users sending the most requests to your sites. A single IP generating unusually high traffic may indicate a bot, scraper, or potential attack.</span>
           </h3>
           <div class="talker-list">
             <div v-for="item in topTalkers.topIps" :key="item.value" class="talker-item">
@@ -254,9 +256,11 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
 
         <!-- Top Hosts -->
         <div class="talker-card" v-if="topTalkers.topHosts?.length">
-          <h3 class="talker-title" title="The websites and domains receiving the most traffic. This shows which of your properties are busiest right now.">
+          <h3 class="talker-title has-tooltip">
             <UIcon name="i-heroicons-globe-alt" class="w-4 h-4" />
             Top Hosts
+            <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5 tooltip-icon" />
+            <span class="custom-tooltip">The websites and domains receiving the most traffic. This shows which of your properties are busiest right now.</span>
           </h3>
           <div class="talker-list">
             <div v-for="item in topTalkers.topHosts" :key="item.value" class="talker-item">
@@ -273,9 +277,11 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
 
         <!-- Top Status Codes -->
         <div class="talker-card" v-if="topTalkers.topStatuses?.length">
-          <h3 class="talker-title" title="HTTP response codes returned to visitors. 2xx means success, 3xx is a redirect, 4xx means the visitor requested something invalid, and 5xx indicates a server-side problem.">
+          <h3 class="talker-title has-tooltip">
             <UIcon name="i-heroicons-signal" class="w-4 h-4" />
             Top Status Codes
+            <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5 tooltip-icon" />
+            <span class="custom-tooltip">HTTP response codes returned to visitors. 2xx means success, 3xx is a redirect, 4xx means the visitor requested something invalid, and 5xx indicates a server-side problem.</span>
           </h3>
           <div class="talker-list">
             <div v-for="item in topTalkers.topStatuses" :key="item.value" class="talker-item">
@@ -295,9 +301,11 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
 
         <!-- Top Firewall Actions -->
         <div class="talker-card" v-if="topTalkers.topActions?.length">
-          <h3 class="talker-title" title="How Cloudflare's firewall responded to incoming requests. 'Allow' means the request was permitted, 'Block' means it was stopped, and 'Challenge' means the visitor was asked to prove they are human.">
+          <h3 class="talker-title has-tooltip">
             <UIcon name="i-heroicons-shield-check" class="w-4 h-4" />
             Firewall Actions
+            <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5 tooltip-icon" />
+            <span class="custom-tooltip">How Cloudflare's firewall responded to incoming requests. &lsquo;Allow&rsquo; means the request was permitted, &lsquo;Block&rsquo; means it was stopped, and &lsquo;Challenge&rsquo; means the visitor was asked to prove they are human.</span>
           </h3>
           <div class="talker-list">
             <div v-for="item in topTalkers.topActions" :key="item.value" class="talker-item">
@@ -553,9 +561,57 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
   display: flex;
   align-items: center;
   gap: 6px;
+  position: relative;
+}
+
+/* Tooltip trigger icon */
+.tooltip-icon {
+  color: #525252;
   cursor: help;
-  text-decoration: underline dotted rgba(163, 163, 163, 0.4);
-  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.has-tooltip:hover .tooltip-icon {
+  color: #f6821f;
+}
+
+/* Custom tooltip bubble */
+.custom-tooltip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 50;
+  width: 260px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #d4d4d4;
+  background-color: #1c1c1c;
+  border: 1px solid #333333;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  text-decoration: none;
+}
+
+.custom-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 16px;
+  width: 8px;
+  height: 8px;
+  background-color: #1c1c1c;
+  border-left: 1px solid #333333;
+  border-top: 1px solid #333333;
+  transform: rotate(45deg);
+}
+
+.has-tooltip:hover .custom-tooltip {
+  display: block;
 }
 
 .talker-list {
