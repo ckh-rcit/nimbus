@@ -17,18 +17,21 @@ const statsQuery = computed(() => {
   return params
 })
 
-// Fetch stats with zone filter
-const { data: stats, refresh: refreshStats } = await useFetch('/api/stats', {
+// Use lazy fetches so the page renders instantly with skeletons
+const { data: stats, status: statsStatus } = useLazyFetch('/api/stats', {
   query: statsQuery,
   watch: [statsQuery]
 })
-const { data: zonesData } = await useFetch('/api/zones')
+const { data: zonesData } = useLazyFetch('/api/zones')
 
-// Fetch top talkers
-const { data: topTalkers } = await useFetch('/api/stats/top-talkers', {
+const { data: topTalkers, status: talkersStatus } = useLazyFetch('/api/stats/top-talkers', {
   query: statsQuery,
   watch: [statsQuery]
 })
+
+// Loading helpers
+const statsLoading = computed(() => statsStatus.value === 'pending')
+const talkersLoading = computed(() => talkersStatus.value === 'pending')
 
 // Get selected zone name for display
 const selectedZoneName = computed(() => {
@@ -90,51 +93,73 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
 
     <!-- Stats Cards -->
     <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon stat-icon-orange">
-          <UIcon name="i-heroicons-document-text" class="w-6 h-6" />
+      <template v-if="statsLoading">
+        <div v-for="i in 4" :key="i" class="stat-card">
+          <div class="stat-icon skeleton-icon"></div>
+          <div class="stat-content">
+            <div class="skeleton-line skeleton-label"></div>
+            <div class="skeleton-line skeleton-value"></div>
+          </div>
         </div>
-        <div class="stat-content">
-          <p class="stat-label">Total Logs</p>
-          <p class="stat-value">{{ formatNumber(stats?.totalLogs || 0) }}</p>
+      </template>
+      <template v-else>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-orange">
+            <UIcon name="i-heroicons-document-text" class="w-6 h-6" />
+          </div>
+          <div class="stat-content">
+            <p class="stat-label">Total Logs</p>
+            <p class="stat-value">{{ formatNumber(stats?.totalLogs || 0) }}</p>
+          </div>
         </div>
-      </div>
 
-      <div class="stat-card">
-        <div class="stat-icon stat-icon-orange">
-          <UIcon name="i-heroicons-globe-alt" class="w-6 h-6" />
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-orange">
+            <UIcon name="i-heroicons-globe-alt" class="w-6 h-6" />
+          </div>
+          <div class="stat-content">
+            <p class="stat-label">Zones</p>
+            <p class="stat-value">{{ zonesData?.count || 0 }}</p>
+          </div>
         </div>
-        <div class="stat-content">
-          <p class="stat-label">Zones</p>
-          <p class="stat-value">{{ zonesData?.count || 0 }}</p>
-        </div>
-      </div>
 
-      <div class="stat-card">
-        <div class="stat-icon">
-          <UIcon name="i-heroicons-circle-stack" class="w-6 h-6" />
+        <div class="stat-card">
+          <div class="stat-icon">
+            <UIcon name="i-heroicons-circle-stack" class="w-6 h-6" />
+          </div>
+          <div class="stat-content">
+            <p class="stat-label">Active Datasets</p>
+            <p class="stat-value">{{ Object.keys(stats?.datasetCounts || {}).length }}</p>
+          </div>
         </div>
-        <div class="stat-content">
-          <p class="stat-label">Active Datasets</p>
-          <p class="stat-value">{{ Object.keys(stats?.datasetCounts || {}).length }}</p>
-        </div>
-      </div>
 
-      <div class="stat-card">
-        <div class="stat-icon stat-icon-orange">
-          <UIcon name="i-heroicons-calendar" class="w-6 h-6" />
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-orange">
+            <UIcon name="i-heroicons-calendar" class="w-6 h-6" />
+          </div>
+          <div class="stat-content">
+            <p class="stat-label">Logs Today</p>
+            <p class="stat-value">{{ formatNumber(stats?.logsToday || 0) }}</p>
+          </div>
         </div>
-        <div class="stat-content">
-          <p class="stat-label">Logs Today</p>
-          <p class="stat-value">{{ formatNumber(stats?.logsToday || 0) }}</p>
-        </div>
-      </div>
+      </template>
     </div>
 
     <!-- Zone Datasets -->
-    <div class="section" v-if="activeZoneDatasets.length > 0 || !selectedZone">
+    <div class="section">
       <h2 class="section-title">Zone Datasets</h2>
-      <div class="dataset-grid">
+      <div class="dataset-grid" v-if="statsLoading">
+        <div v-for="i in 3" :key="i" class="dataset-card">
+          <div class="dataset-card-left">
+            <div class="dataset-icon skeleton-icon-sm"></div>
+            <div class="dataset-info">
+              <div class="skeleton-line skeleton-name"></div>
+              <div class="skeleton-line skeleton-count"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dataset-grid" v-else-if="activeZoneDatasets.length > 0 || !selectedZone">
         <NuxtLink
           v-for="card in zoneDatasetCards"
           :key="card.dataset"
@@ -161,12 +186,30 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
     </div>
 
     <!-- Top Talkers -->
-    <div class="section" v-if="topTalkers && (topTalkers.topIps?.length || topTalkers.topHosts?.length)">
+    <div class="section">
       <h2 class="section-title">Top Talkers <span class="section-subtitle">(last 24h)</span></h2>
-      <div class="talkers-grid">
+      <!-- Skeleton state -->
+      <div class="talkers-grid" v-if="talkersLoading">
+        <div v-for="i in 4" :key="i" class="talker-card">
+          <div class="skeleton-line skeleton-talker-title"></div>
+          <div class="talker-list">
+            <div v-for="j in 3" :key="j" class="talker-item">
+              <div class="talker-info">
+                <div class="skeleton-line skeleton-talker-label"></div>
+                <div class="skeleton-line skeleton-talker-count"></div>
+              </div>
+              <div class="talker-bar-track">
+                <div class="talker-bar skeleton-bar" :style="{ width: (90 - j * 20) + '%' }"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Loaded state -->
+      <div class="talkers-grid" v-else-if="topTalkers && (topTalkers.topIps?.length || topTalkers.topHosts?.length)">
         <!-- Top Client IPs -->
         <div class="talker-card" v-if="topTalkers.topIps?.length">
-          <h3 class="talker-title">
+          <h3 class="talker-title" title="The devices or users sending the most requests to your sites. A single IP generating unusually high traffic may indicate a bot, scraper, or potential attack.">
             <UIcon name="i-heroicons-user" class="w-4 h-4" />
             Top Client IPs
           </h3>
@@ -185,7 +228,7 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
 
         <!-- Top Hosts -->
         <div class="talker-card" v-if="topTalkers.topHosts?.length">
-          <h3 class="talker-title">
+          <h3 class="talker-title" title="The websites and domains receiving the most traffic. This shows which of your properties are busiest right now.">
             <UIcon name="i-heroicons-globe-alt" class="w-4 h-4" />
             Top Hosts
           </h3>
@@ -204,7 +247,7 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
 
         <!-- Top Status Codes -->
         <div class="talker-card" v-if="topTalkers.topStatuses?.length">
-          <h3 class="talker-title">
+          <h3 class="talker-title" title="HTTP response codes returned to visitors. 2xx means success, 3xx is a redirect, 4xx means the visitor requested something invalid, and 5xx indicates a server-side problem.">
             <UIcon name="i-heroicons-signal" class="w-4 h-4" />
             Top Status Codes
           </h3>
@@ -226,7 +269,7 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
 
         <!-- Top Firewall Actions -->
         <div class="talker-card" v-if="topTalkers.topActions?.length">
-          <h3 class="talker-title">
+          <h3 class="talker-title" title="How Cloudflare's firewall responded to incoming requests. 'Allow' means the request was permitted, 'Block' means it was stopped, and 'Challenge' means the visitor was asked to prove they are human.">
             <UIcon name="i-heroicons-shield-check" class="w-4 h-4" />
             Firewall Actions
           </h3>
@@ -484,6 +527,9 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
   display: flex;
   align-items: center;
   gap: 6px;
+  cursor: help;
+  text-decoration: underline dotted rgba(163, 163, 163, 0.4);
+  text-underline-offset: 3px;
 }
 
 .talker-list {
@@ -559,10 +605,91 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
 .action-block { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; }
 .action-challenge, .action-jschallenge, .action-managedchallenge { background-color: rgba(234, 179, 8, 0.15); color: #eab308; }
 .action-log { background-color: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+.action-skip { background-color: rgba(163, 163, 163, 0.15); color: #a3a3a3; }
+.action-managedchallengebypassed { background-color: rgba(168, 85, 247, 0.15); color: #a855f7; }
 
 /* Colored bars for firewall actions */
 .bar-block { background-color: #ef4444; }
 .bar-challenge, .bar-jschallenge, .bar-managedchallenge { background-color: #eab308; }
 .bar-allow { background-color: #22c55e; }
 .bar-log { background-color: #3b82f6; }
+.bar-skip { background-color: #a3a3a3; }
+.bar-managedchallengebypassed { background-color: #a855f7; }
+
+/* Skeleton loading animations */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-line {
+  background: linear-gradient(90deg, #262626 25%, #333333 50%, #262626 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+.skeleton-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #262626 25%, #333333 50%, #262626 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-icon-sm {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #262626 25%, #333333 50%, #262626 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-label {
+  width: 80px;
+  height: 14px;
+  margin-bottom: 6px;
+}
+
+.skeleton-value {
+  width: 60px;
+  height: 28px;
+}
+
+.skeleton-name {
+  width: 100px;
+  height: 14px;
+  margin-bottom: 4px;
+}
+
+.skeleton-count {
+  width: 60px;
+  height: 12px;
+}
+
+.skeleton-talker-title {
+  width: 120px;
+  height: 14px;
+  margin-bottom: 12px;
+}
+
+.skeleton-talker-label {
+  width: 100px;
+  height: 13px;
+}
+
+.skeleton-talker-count {
+  width: 36px;
+  height: 12px;
+}
+
+.skeleton-bar {
+  background: linear-gradient(90deg, #262626 25%, #333333 50%, #262626 75%) !important;
+  background-size: 200% 100% !important;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
 </style>

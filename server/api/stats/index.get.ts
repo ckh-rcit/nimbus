@@ -10,46 +10,39 @@ export default defineEventHandler(async (event) => {
   // Build where clause for zone filtering
   const zoneCondition = zoneId ? eq(schema.logs.zoneId, zoneId) : undefined
 
-  // Get counts per dataset (filtered by zone if selected)
-  const datasetCounts = await db
-    .select({
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const todayCondition = sql`${schema.logs.timestamp} >= ${todayStart.toISOString()}`
+
+  // Run all queries in parallel
+  const [datasetCounts, totalResult, zoneCounts, latestLogs, logsTodayResult] = await Promise.all([
+    db.select({
       dataset: schema.logs.dataset,
       count: sql<number>`count(*)::int`
     })
     .from(schema.logs)
     .where(zoneCondition)
-    .groupBy(schema.logs.dataset)
+    .groupBy(schema.logs.dataset),
 
-  // Get total count (filtered by zone if selected)
-  const totalResult = await db
-    .select({ count: sql<number>`count(*)::int` })
+    db.select({ count: sql<number>`count(*)::int` })
     .from(schema.logs)
-    .where(zoneCondition)
+    .where(zoneCondition),
 
-  // Get zone counts
-  const zoneCounts = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(schema.zones)
+    db.select({ count: sql<number>`count(*)::int` })
+    .from(schema.zones),
 
-  // Get latest log timestamp per dataset (filtered by zone if selected)
-  const latestLogs = await db
-    .select({
+    db.select({
       dataset: schema.logs.dataset,
       latestTimestamp: sql<string>`max(timestamp)::text`
     })
     .from(schema.logs)
     .where(zoneCondition)
-    .groupBy(schema.logs.dataset)
+    .groupBy(schema.logs.dataset),
 
-  // Get logs from today (filtered by zone if selected)
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
-  
-  const todayCondition = sql`${schema.logs.timestamp} >= ${todayStart.toISOString()}`
-  const logsTodayResult = await db
-    .select({ count: sql<number>`count(*)::int` })
+    db.select({ count: sql<number>`count(*)::int` })
     .from(schema.logs)
     .where(zoneCondition ? and(zoneCondition, todayCondition) : todayCondition)
+  ])
 
   return {
     totalLogs: totalResult[0]?.count || 0,

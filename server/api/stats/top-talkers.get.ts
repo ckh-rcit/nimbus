@@ -13,9 +13,10 @@ export default defineEventHandler(async (event) => {
   const zoneCondition = zoneId ? eq(schema.logs.zoneId, zoneId) : undefined
   const baseCondition = zoneCondition ? and(zoneCondition, timeCondition) : timeCondition
 
-  // Top 5 Client IPs
-  const topIps = await db
-    .select({
+  // Run all four queries in parallel
+  const [topIps, topHosts, topStatuses, topActions] = await Promise.all([
+    // Top 5 Client IPs
+    db.select({
       value: schema.logs.clientIp,
       count: sql<number>`count(*)::int`
     })
@@ -23,11 +24,10 @@ export default defineEventHandler(async (event) => {
     .where(and(baseCondition, sql`${schema.logs.clientIp} IS NOT NULL`))
     .groupBy(schema.logs.clientIp)
     .orderBy(sql`count(*) DESC`)
-    .limit(5)
+    .limit(5),
 
-  // Top 5 Hosts (from HTTP requests data->>'ClientRequestHost')
-  const topHosts = await db
-    .select({
+    // Top 5 Hosts (from HTTP requests data->>'ClientRequestHost')
+    db.select({
       value: sql<string>`${schema.logs.data}->>'ClientRequestHost'`,
       count: sql<number>`count(*)::int`
     })
@@ -35,11 +35,10 @@ export default defineEventHandler(async (event) => {
     .where(and(baseCondition, eq(schema.logs.dataset, 'http_requests'), sql`${schema.logs.data}->>'ClientRequestHost' IS NOT NULL`))
     .groupBy(sql`${schema.logs.data}->>'ClientRequestHost'`)
     .orderBy(sql`count(*) DESC`)
-    .limit(5)
+    .limit(5),
 
-  // Top 5 HTTP Status Codes
-  const topStatuses = await db
-    .select({
+    // Top 5 HTTP Status Codes
+    db.select({
       value: sql<string>`${schema.logs.data}->>'EdgeResponseStatus'`,
       count: sql<number>`count(*)::int`
     })
@@ -47,11 +46,10 @@ export default defineEventHandler(async (event) => {
     .where(and(baseCondition, eq(schema.logs.dataset, 'http_requests'), sql`${schema.logs.data}->>'EdgeResponseStatus' IS NOT NULL`))
     .groupBy(sql`${schema.logs.data}->>'EdgeResponseStatus'`)
     .orderBy(sql`count(*) DESC`)
-    .limit(5)
+    .limit(5),
 
-  // Top 5 Firewall Actions
-  const topActions = await db
-    .select({
+    // Top 5 Firewall Actions
+    db.select({
       value: sql<string>`${schema.logs.data}->>'Action'`,
       count: sql<number>`count(*)::int`
     })
@@ -60,6 +58,7 @@ export default defineEventHandler(async (event) => {
     .groupBy(sql`${schema.logs.data}->>'Action'`)
     .orderBy(sql`count(*) DESC`)
     .limit(5)
+  ])
 
   return {
     period: `${hours}h`,
