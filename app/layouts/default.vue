@@ -179,6 +179,11 @@ const isActive = (path: string) => route.path === path
       <main class="nimbus-content">
         <slot />
       </main>
+
+      <!-- Footer -->
+      <footer class="nimbus-footer">
+        <span>&copy; {{ new Date().getFullYear() }} Chris K. Harris. All rights reserved.</span>
+      </footer>
     </div>
   </div>
 </template>
@@ -435,6 +440,16 @@ const isActive = (path: string) => route.path === path
   flex: 1;
   overflow: auto;
   padding: 24px;
+  background-color: #0a0a0a;
+}
+
+/* Footer */
+.nimbus-footer {
+  padding: 16px 24px;
+  text-align: center;
+  font-size: 13px;
+  color: #525252;
+  border-top: 1px solid #262626;
   background-color: #0a0a0a;
 }
 </style>
