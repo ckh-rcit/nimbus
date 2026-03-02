@@ -718,7 +718,6 @@ function getColumnStyle(col: string) {
   width: 100%;
   min-width: max-content;
   border-collapse: collapse;
-  table-layout: fixed;
 }
 
 .logs-table.is-resizing {

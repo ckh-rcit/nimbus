@@ -43,6 +43,13 @@ export default defineNuxtConfig({
     }
   },
 
+  // Suppress Tailwind CSS sourcemap warnings in SSR build
+  vite: {
+    build: {
+      sourcemap: false
+    }
+  },
+
   // App configuration
   app: {
     head: {
