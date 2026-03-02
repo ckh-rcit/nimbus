@@ -28,22 +28,44 @@ const DATASET_SIGNATURES: Array<{
   { 
     dataset: 'http_requests', 
     uniqueFields: [
-      // Performance/Edge fields unique to HTTP requests
-      'EdgeStartTimestamp', 'EdgeEndTimestamp', 'EdgeResponseStatus', 'EdgeColoCode', 'EdgeColoID',
-      'EdgeResponseBytes', 'EdgeResponseBodyBytes', 'EdgeTimeToFirstByteMs', 'EdgePathingSrc',
-      // Cache fields
-      'CacheCacheStatus', 'CacheReserveUsed', 'CacheResponseBytes', 'CacheTieredFill',
-      // Origin timing
-      'OriginResponseDurationMs', 'OriginTCPHandshakeDurationMs', 'OriginTLSHandshakeDurationMs',
-      // Worker fields
-      'WorkerCPUTime', 'WorkerWallTimeUs', 'WorkerStatus', 'WorkerScriptName',
-      // Bot fields
-      'BotScore', 'BotScoreSrc', 'BotTags', 'BotDetectionIDs'
+      // Bots
+      'BotDetectionIDs', 'BotScore', 'BotScoreSrc', 'BotTags',
+      // Cache
+      'CacheCacheStatus', 'CacheReserveUsed', 'CacheResponseBytes', 'CacheResponseStatus', 'CacheTieredFill',
+      // Performance
+      'ClientTCPRTTMs', 'EdgeEndTimestamp', 'EdgeStartTimestamp', 'EdgeTimeToFirstByteMs',
+      'OriginDNSResponseTimeMs', 'OriginRequestHeaderSendDurationMs', 'OriginResponseDurationMs',
+      'OriginResponseHeaderReceiveDurationMs', 'OriginResponseTime', 'OriginTCPHandshakeDurationMs',
+      'OriginTLSHandshakeDurationMs', 'WorkerCPUTime', 'WorkerWallTimeUs',
+      // TLS
+      'ClientMTLSAuthCertFingerprint', 'ClientMTLSAuthStatus', 'ClientSSLCipher', 'ClientSSLProtocol', 'OriginSSLProtocol',
+      // Cloudflare Edge
+      'EdgeCFConnectingO2O', 'EdgeColoCode', 'EdgeColoID', 'EdgeServerIP', 'SmartRouteColoID', 'UpperTierColoID',
+      // Response
+      'EdgePathingOp', 'EdgeResponseBodyBytes', 'EdgeResponseBytes', 'EdgeResponseCompressionRatio',
+      'EdgeResponseContentType', 'EdgeResponseStatus', 'OriginIP', 'OriginResponseBytes',
+      'OriginResponseHTTPExpires', 'OriginResponseHTTPLastModified', 'OriginResponseStatus', 'ResponseHeaders',
+      // Security
+      'EdgePathingSrc', 'EdgePathingStatus', 'SecurityAction', 'SecurityActions', 'SecurityRuleDescription',
+      'SecurityRuleID', 'SecurityRuleIDs', 'SecuritySources', 'WAFAttackScore', 'WAFFlags', 'WAFMatchedVar',
+      'WAFRCEAttackScore', 'WAFSQLiAttackScore', 'WAFXSSAttackScore',
+      // Status
+      'WorkerStatus'
     ],
     commonFields: [
-      'RayID', 'ClientIP', 'ClientRequestHost', 'ClientRequestMethod', 'ClientRequestPath',
-      'ClientRequestURI', 'ClientASN', 'ClientCountry', 'ZoneName', 'SecurityAction',
-      'WAFAttackScore', 'JA3Hash', 'JA4'
+      // General
+      'BotDetectionTags', 'ClientCity', 'ClientLatitude', 'ClientLongitude', 'ContentScanObjSizes',
+      'JA4', 'JA4Signals', 'JSDetectionPassed', 'LeakedCredentialCheckResult', 'ParentRayID',
+      'PayPerCrawlStatus', 'RayID', 'VerifiedBotCategory', 'WorkerScriptName', 'WorkerSubrequest',
+      'WorkerSubrequestCount', 'ZoneName',
+      // Request
+      'ClientASN', 'ClientCountry', 'ClientDeviceType', 'ClientIP', 'ClientIPClass', 'ClientRegionCode',
+      'ClientRequestBytes', 'ClientRequestHost', 'ClientRequestMethod', 'ClientRequestPath',
+      'ClientRequestProtocol', 'ClientRequestReferer', 'ClientRequestScheme', 'ClientRequestSource',
+      'ClientRequestURI', 'ClientRequestUserAgent', 'ClientSrcPort', 'ClientXRequestedWith',
+      'Cookies', 'EdgeRequestHost', 'RequestHeaders',
+      // Security (shared)
+      'ContentScanObjResults', 'ContentScanObjTypes', 'JA3Hash'
     ],
     minScore: 4
   },
@@ -51,8 +73,7 @@ const DATASET_SIGNATURES: Array<{
     dataset: 'firewall_events', 
     uniqueFields: [
       // General
-      'Action', 'ContentScanObjResults', 'ContentScanObjSizes', 'ContentScanObjTypes',
-      'Description', 'Kind', 'LeakedCredentialCheckResult', 'MatchIndex', 'Metadata',
+      'Action', 'Description', 'Kind', 'MatchIndex', 'Metadata',
       'OriginatorRayID', 'Ref', 'RuleID', 'Source',
       // Edge
       'EdgeColoCode', 'EdgeResponseStatus',
@@ -61,7 +82,8 @@ const DATASET_SIGNATURES: Array<{
     ],
     commonFields: [
       // General
-      'Datetime', 'RayID',
+      'ContentScanObjResults', 'ContentScanObjSizes', 'ContentScanObjTypes',
+      'Datetime', 'LeakedCredentialCheckResult', 'RayID',
       // Client
       'ClientASN', 'ClientASNDescription', 'ClientCountry', 'ClientIP', 'ClientIPClass',
       'ClientRefererHost', 'ClientRefererPath', 'ClientRefererQuery', 'ClientRefererScheme',
@@ -78,188 +100,6 @@ const DATASET_SIGNATURES: Array<{
     ],
     commonFields: ['SourceIP', 'Timestamp'],
     minScore: 4
-  },
-  { 
-    dataset: 'spectrum_events', 
-    uniqueFields: ['Application', 'Event', 'OriginIP', 'ConnectTimestamp'],
-    commonFields: ['ClientIP', 'Status'],
-    minScore: 3
-  },
-  { 
-    dataset: 'nel_reports', 
-    uniqueFields: ['Type', 'Body', 'Phase'],
-    commonFields: ['URL', 'Timestamp'],
-    minScore: 3
-  },
-  { 
-    dataset: 'page_shield_events', 
-    uniqueFields: ['ScriptURL', 'PageURL'],
-    commonFields: ['Action', 'Timestamp'],
-    minScore: 2
-  },
-  { 
-    dataset: 'zaraz_events', 
-    uniqueFields: ['EventType', 'Tool', 'ZarazWorkerID'],
-    commonFields: ['ClientIP', 'Timestamp'],
-    minScore: 2
-  },
-  
-  // Account-scoped datasets
-  { 
-    dataset: 'audit_logs', 
-    uniqueFields: [
-      // Key identifiers - audit_logs uses 'ID' and 'When', not 'AuditLogID' and 'ActionTimestamp'
-      'ID', 'When', 'Interface', 'OwnerID',
-      // Actor fields - uses 'ActorIP' not 'ActorIPAddress'
-      'ActorEmail', 'ActorID', 'ActorIP', 'ActorType',
-      // Resource fields
-      'Metadata', 'NewValue', 'OldValue'
-    ],
-    commonFields: ['ActionType', 'ActionResult', 'ResourceType', 'ResourceID'],
-    minScore: 4
-  },
-  { 
-    dataset: 'audit_logs_v2', 
-    uniqueFields: [
-      // Key identifiers - audit_logs_v2 uses 'AuditLogID' and 'ActionTimestamp'
-      'AuditLogID', 'ActionTimestamp', 'ActionDescription',
-      // Account fields
-      'AccountID', 'AccountName',
-      // Actor fields - uses 'ActorIPAddress' not 'ActorIP', has ActorContext and ActorTokenDetails
-      'ActorContext', 'ActorIPAddress', 'ActorTokenDetails',
-      // Resource fields - more detailed than v1
-      'ResourceProduct', 'ResourceRequest', 'ResourceResponse', 'ResourceScope', 'ResourceValue',
-      // Zone fields
-      'ZoneID', 'ZoneName', 'Raw'
-    ],
-    commonFields: ['ActionType', 'ActionResult', 'ActorEmail', 'ActorID', 'ActorType', 'ResourceType', 'ResourceID'],
-    minScore: 4
-  },
-  { 
-    dataset: 'access_requests', 
-    uniqueFields: ['AppDomain', 'AppUUID', 'CreatedAt'],
-    commonFields: ['Action', 'UserEmail', 'IPAddress'],
-    minScore: 3
-  },
-  { 
-    dataset: 'gateway_dns', 
-    uniqueFields: ['QueryName', 'QueryType', 'PolicyName', 'ResolverDecision'],
-    commonFields: ['SourceIP', 'Datetime', 'Location'],
-    minScore: 4
-  },
-  { 
-    dataset: 'gateway_http', 
-    uniqueFields: ['HTTPMethod', 'PolicyName', 'RequestID'],
-    commonFields: ['URL', 'Action', 'UserEmail', 'SourceIP'],
-    minScore: 3
-  },
-  { 
-    dataset: 'gateway_network', 
-    uniqueFields: ['DestinationIP', 'DestinationPort', 'PolicyName', 'SessionID'],
-    commonFields: ['Protocol', 'Action', 'SourceIP'],
-    minScore: 4
-  },
-  { 
-    dataset: 'workers_trace_events', 
-    uniqueFields: ['ScriptName', 'EventTimestampMs', 'DispatchNamespace'],
-    commonFields: ['Event', 'Outcome'],
-    minScore: 2
-  },
-  { 
-    dataset: 'zero_trust_network_sessions', 
-    uniqueFields: ['SessionStartTime', 'DeviceID', 'VirtualNetworkID'],
-    commonFields: ['UserEmail', 'SessionState'],
-    minScore: 3
-  },
-  { 
-    dataset: 'biso_user_actions', 
-    uniqueFields: ['IsolatedSessionID', 'BrowserType'],
-    commonFields: ['Action', 'URL', 'UserEmail', 'Timestamp'],
-    minScore: 2
-  },
-  { 
-    dataset: 'casb_findings', 
-    uniqueFields: ['FindingType', 'IntegrationName', 'IntegrationPolicyVendor'],
-    commonFields: ['DetectedTimestamp', 'Severity'],
-    minScore: 2
-  },
-  { 
-    dataset: 'device_posture_results', 
-    uniqueFields: ['RuleName', 'DeviceID', 'PostureCheckType'],
-    commonFields: ['Result', 'Timestamp'],
-    minScore: 3
-  },
-  { 
-    dataset: 'dex_application_tests', 
-    uniqueFields: ['ApplicationID', 'TestName', 'ColoCode'],
-    commonFields: ['Timestamp'],
-    minScore: 2
-  },
-  { 
-    dataset: 'dex_device_state_events', 
-    uniqueFields: ['DeviceID', 'StateType', 'Version'],
-    commonFields: ['Timestamp'],
-    minScore: 2
-  },
-  { 
-    dataset: 'dlp_forensic_copies', 
-    uniqueFields: ['RuleID', 'Content', 'ProfileID'],
-    commonFields: ['Timestamp'],
-    minScore: 2
-  },
-  { 
-    dataset: 'dns_firewall_logs', 
-    uniqueFields: ['ClusterID', 'UpstreamIP'],
-    commonFields: ['QueryName', 'Timestamp'],
-    minScore: 2
-  },
-  { 
-    dataset: 'email_security_alerts', 
-    uniqueFields: ['AlertType', 'Sender', 'Recipient', 'MessageID'],
-    commonFields: ['Timestamp'],
-    minScore: 3
-  },
-  { 
-    dataset: 'ipsec_logs', 
-    uniqueFields: ['TunnelID', 'TunnelName', 'TunnelHealth'],
-    commonFields: ['Timestamp'],
-    minScore: 2
-  },
-  { 
-    dataset: 'magic_ids_detections', 
-    uniqueFields: ['DetectionID', 'SignatureID', 'SignatureMessage'],
-    commonFields: ['Timestamp'],
-    minScore: 2
-  },
-  { 
-    dataset: 'network_analytics_logs', 
-    uniqueFields: ['AttackID', 'AttackType', 'MitigationType'],
-    commonFields: ['DestinationIP', 'SourceIP', 'Protocol', 'Timestamp'],
-    minScore: 3
-  },
-  { 
-    dataset: 'sinkhole_http_logs', 
-    uniqueFields: ['R2Path', 'SinkholeID'],
-    commonFields: ['AccountID', 'Timestamp'],
-    minScore: 2
-  },
-  { 
-    dataset: 'ssh_logs', 
-    uniqueFields: ['SessionID', 'SSHPublicKey'],
-    commonFields: ['UserEmail', 'Timestamp'],
-    minScore: 2
-  },
-  { 
-    dataset: 'warp_config_changes', 
-    uniqueFields: ['ConfigType', 'DeviceID'],
-    commonFields: ['OldValue', 'NewValue', 'Timestamp'],
-    minScore: 2
-  },
-  { 
-    dataset: 'warp_toggle_changes', 
-    uniqueFields: ['ToggleType', 'DeviceID'],
-    commonFields: ['OldState', 'NewState', 'Timestamp'],
-    minScore: 2
   }
 ]
 
@@ -267,34 +107,7 @@ const DATASET_SIGNATURES: Array<{
 const TIMESTAMP_FIELDS: Record<string, string> = {
   http_requests: 'EdgeStartTimestamp',
   firewall_events: 'Datetime',
-  dns_logs: 'Timestamp',
-  audit_logs: 'When',
-  audit_logs_v2: 'ActionTimestamp',
-  gateway_dns: 'Datetime',
-  gateway_http: 'Datetime',
-  gateway_network: 'Datetime',
-  access_requests: 'CreatedAt',
-  workers_trace_events: 'EventTimestampMs',
-  spectrum_events: 'Timestamp',
-  nel_reports: 'Timestamp',
-  page_shield_events: 'Timestamp',
-  zaraz_events: 'Timestamp',
-  zero_trust_network_sessions: 'SessionStartTime',
-  biso_user_actions: 'Timestamp',
-  casb_findings: 'DetectedTimestamp',
-  device_posture_results: 'Timestamp',
-  dex_application_tests: 'Timestamp',
-  dex_device_state_events: 'Timestamp',
-  dlp_forensic_copies: 'Timestamp',
-  dns_firewall_logs: 'Timestamp',
-  email_security_alerts: 'Timestamp',
-  ipsec_logs: 'Timestamp',
-  magic_ids_detections: 'Timestamp',
-  network_analytics_logs: 'Timestamp',
-  sinkhole_http_logs: 'Timestamp',
-  ssh_logs: 'Timestamp',
-  warp_config_changes: 'Timestamp',
-  warp_toggle_changes: 'Timestamp'
+  dns_logs: 'Timestamp'
 }
 
 const RAY_ID_FIELDS: Record<string, string> = {
@@ -306,12 +119,7 @@ const RAY_ID_FIELDS: Record<string, string> = {
 const CLIENT_IP_FIELDS: Record<string, string> = {
   http_requests: 'ClientIP',
   firewall_events: 'ClientIP',
-  dns_logs: 'SourceIP',
-  gateway_dns: 'SourceIP',
-  gateway_http: 'SourceIP',
-  access_requests: 'IPAddress',
-  audit_logs: 'ActorIP',
-  audit_logs_v2: 'ActorIPAddress'
+  dns_logs: 'SourceIP'
 }
 
 const ZONE_ID_FIELDS: Record<string, string> = {
@@ -324,11 +132,7 @@ const ZONE_ID_FIELDS: Record<string, string> = {
 const HOST_FIELDS: Record<string, string> = {
   http_requests: 'ClientRequestHost',
   firewall_events: 'ClientRequestHost',
-  dns_logs: 'QueryName',
-  nel_reports: 'URL',
-  spectrum_events: 'ClientIP',
-  page_shield_events: 'Host',
-  zaraz_events: 'ClientRequestHost'
+  dns_logs: 'QueryName'
 }
 
 function parseTimestamp(value: unknown): Date {

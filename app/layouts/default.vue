@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ZONE_DATASET_CONFIGS, ACCOUNT_DATASET_CONFIGS } from '~~/shared/types'
+import { ZONE_DATASET_CONFIGS } from '~~/shared/types'
 
 // Fetch zones for selector
 const { data: zonesData, refresh: refreshZones } = await useFetch('/api/zones')
@@ -14,7 +14,6 @@ const selectedZoneOption = computed({
 
 // Collapsible sections state
 const zoneLogsExpanded = ref(true)
-const accountLogsExpanded = ref(true)
 
 // Time range state
 const timeRanges = [
@@ -87,30 +86,6 @@ const isActive = (path: string) => route.path === path
         <div v-show="zoneLogsExpanded" class="nimbus-nav-group">
           <NuxtLink
             v-for="ds in ZONE_DATASET_CONFIGS"
-            :key="ds.id"
-            :to="`/logs/${ds.id}`"
-            class="nimbus-nav-link"
-            :class="{ active: isActive(`/logs/${ds.id}`) }"
-            :title="ds.description"
-          >
-            <UIcon :name="ds.icon" class="w-4 h-4" />
-            <span>{{ ds.label }}</span>
-          </NuxtLink>
-        </div>
-
-        <!-- Account Datasets Section -->
-        <div class="nimbus-nav-section">
-          <button class="nimbus-nav-section-header" @click="accountLogsExpanded = !accountLogsExpanded">
-            <span class="nimbus-nav-title">Account Logs</span>
-            <UIcon 
-              :name="accountLogsExpanded ? 'i-heroicons-chevron-down' : 'i-heroicons-chevron-right'" 
-              class="w-4 h-4 text-neutral-500" 
-            />
-          </button>
-        </div>
-        <div v-show="accountLogsExpanded" class="nimbus-nav-group">
-          <NuxtLink
-            v-for="ds in ACCOUNT_DATASET_CONFIGS"
             :key="ds.id"
             :to="`/logs/${ds.id}`"
             class="nimbus-nav-link"
