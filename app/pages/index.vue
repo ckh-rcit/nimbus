@@ -17,16 +17,42 @@ const statsQuery = computed(() => {
   return params
 })
 
-// Use lazy fetches so the page renders instantly with skeletons
+// Cache TTL: return cached data if fresher than 30s, avoiding re-fetches on navigation
+const CACHE_MAX_AGE = 30_000
+const cacheTimestamps = new Map<string, number>()
+
+function getCachedData(key: string, nuxtApp: any) {
+  const cached = nuxtApp.payload.data[key] || nuxtApp.static.data[key]
+  if (!cached) return undefined
+  const fetchedAt = cacheTimestamps.get(key) || 0
+  if (Date.now() - fetchedAt > CACHE_MAX_AGE) return undefined
+  return cached
+}
+
+// Use lazy fetches with server:false so the page renders instantly with skeletons
+// getCachedData returns stale data on back-navigation so there's no loading flash
 const { data: stats, status: statsStatus } = useLazyFetch('/api/stats', {
+  key: 'dashboard-stats',
   query: statsQuery,
-  watch: [statsQuery]
+  watch: [statsQuery],
+  server: false,
+  getCachedData: (key, nuxtApp) => getCachedData(key, nuxtApp),
+  onResponse() { cacheTimestamps.set('dashboard-stats', Date.now()) }
 })
-const { data: zonesData } = useLazyFetch('/api/zones')
+const { data: zonesData } = useLazyFetch('/api/zones', {
+  key: 'dashboard-zones',
+  server: false,
+  getCachedData: (key, nuxtApp) => getCachedData(key, nuxtApp),
+  onResponse() { cacheTimestamps.set('dashboard-zones', Date.now()) }
+})
 
 const { data: topTalkers, status: talkersStatus } = useLazyFetch('/api/stats/top-talkers', {
+  key: 'dashboard-top-talkers',
   query: statsQuery,
-  watch: [statsQuery]
+  watch: [statsQuery],
+  server: false,
+  getCachedData: (key, nuxtApp) => getCachedData(key, nuxtApp),
+  onResponse() { cacheTimestamps.set('dashboard-top-talkers', Date.now()) }
 })
 
 // Loading helpers
