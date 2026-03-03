@@ -57,6 +57,9 @@ export default defineNuxtConfig({
       meta: [
         { name: 'description', content: 'Custom dashboard for Cloudflare Logpush data' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' }
+      ],
+      link: [
+        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }
       ]
     }
   }
