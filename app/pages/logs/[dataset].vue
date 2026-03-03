@@ -92,8 +92,8 @@ const queryParams = computed(() => {
   return params
 })
 
-// Fetch logs
-const { data, pending, refresh } = await useFetch('/api/logs', {
+// Fetch logs — lazy to avoid blocking SSR (prevents intermittent 500s on hard refresh)
+const { data, pending, refresh } = useLazyFetch('/api/logs', {
   query: queryParams,
   watch: [queryParams]
 })

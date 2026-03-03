@@ -3,6 +3,7 @@ import { desc, eq, and, gte, lte, or, ilike, sql } from 'drizzle-orm'
 import { ALL_DATASETS, type Dataset, type DatasetScope } from '~~/shared/types'
 
 export default defineEventHandler(async (event) => {
+  try {
   const query = getQuery(event)
   
   // Parse query parameters
@@ -119,6 +120,7 @@ export default defineEventHandler(async (event) => {
 
   // Execute query with zone name join
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+  const hasZoneFilter = filters.some(f => f.field === 'zoneName')
 
   const [logs, countResult] = await Promise.all([
     db.select({
@@ -140,9 +142,15 @@ export default defineEventHandler(async (event) => {
       .orderBy(desc(schema.logs.timestamp))
       .limit(limit)
       .offset(offset),
-    db.select({ count: sql<number>`count(*)::int` })
-      .from(schema.logs)
-      .where(whereClause)
+    // Count query needs the join too when filtering by zoneName
+    hasZoneFilter
+      ? db.select({ count: sql<number>`count(*)::int` })
+          .from(schema.logs)
+          .leftJoin(schema.zones, eq(schema.logs.zoneId, schema.zones.id))
+          .where(whereClause)
+      : db.select({ count: sql<number>`count(*)::int` })
+          .from(schema.logs)
+          .where(whereClause)
   ])
 
   return {
@@ -153,5 +161,12 @@ export default defineEventHandler(async (event) => {
       offset,
       hasMore: offset + logs.length < (countResult[0]?.count || 0)
     }
+  }
+  } catch (err: any) {
+    console.error('[API /logs] Error:', err?.message || err)
+    throw createError({
+      statusCode: err?.statusCode || 500,
+      message: err?.message || 'Failed to fetch logs'
+    })
   }
 })
