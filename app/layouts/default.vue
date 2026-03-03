@@ -30,6 +30,40 @@ const selectedTimeRange = useState('timeRange', () => '24h')
 // Auto-refresh state
 const autoRefresh = useState('autoRefresh', () => false)
 
+// Ingest health check
+const { data: healthData, refresh: refreshHealth } = await useFetch('/api/ingest/health')
+const healthStatus = computed(() => healthData.value?.status || 'unknown')
+const healthMessage = computed(() => {
+  if (!healthData.value) return 'Checking ingest status...'
+  const msg = healthData.value.message
+  if (healthData.value.minutesSinceLastIngest !== null) {
+    return `${msg} (${healthData.value.minutesSinceLastIngest}m ago)`
+  }
+  return msg
+})
+const healthColor = computed(() => {
+  switch (healthStatus.value) {
+    case 'healthy': return 'bg-green-500'
+    case 'degraded': return 'bg-yellow-500'
+    case 'unhealthy': return 'bg-red-500'
+    case 'no_data': return 'bg-gray-500'
+    default: return 'bg-gray-500'
+  }
+})
+
+// Auto-refresh health check every 30 seconds
+const healthInterval = ref<NodeJS.Timeout | null>(null)
+onMounted(() => {
+  healthInterval.value = setInterval(() => {
+    refreshHealth()
+  }, 30000) // 30 seconds
+})
+onUnmounted(() => {
+  if (healthInterval.value) {
+    clearInterval(healthInterval.value)
+  }
+})
+
 // Mobile sidebar state
 const sidebarOpen = ref(false)
 const toggleSidebar = () => {
@@ -147,6 +181,12 @@ const isActive = (path: string) => route.path === path
               :class="{ 'animate-spin': syncing }"
             />
           </button>
+          
+          <!-- Ingest Health Indicator -->
+          <div class="health-indicator" :title="healthMessage" @click="refreshHealth">
+            <div class="health-dot" :class="healthColor" />
+            <span class="health-label">Ingest</span>
+          </div>
         </div>
 
         <!-- Right Controls -->
@@ -352,6 +392,47 @@ const isActive = (path: string) => route.path === path
 .nimbus-sync-icon-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Health Indicator */
+.health-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background-color: #171717;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.health-indicator:hover {
+  border-color: #404040;
+  background-color: #1a1a1a;
+}
+
+.health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  animation: pulse 2s infinite;
+}
+
+.health-label {
+  font-size: 13px;
+  color: #a3a3a3;
+  font-weight: 500;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 /* Select */
