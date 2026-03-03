@@ -304,6 +304,40 @@ const FIELD_GROUPS: Record<string, Record<string, string[]>> = {
 }
 
 // Group log data fields into categories
+// Check if a value is meaningful (not empty object, empty array, etc.)
+function isUsefulValue(value: any): boolean {
+  if (value === undefined || value === null || value === '') return false
+  if (Array.isArray(value) && value.length === 0) return false
+  if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) return false
+  return true
+}
+
+// Check if a plural field is redundant with its singular counterpart
+// e.g. SecurityActions=["skip"] is redundant when SecurityAction="skip"
+function isRedundantPlural(key: string, value: any, data: Record<string, any>): boolean {
+  // If this key ends with 's' and there's a singular version with a matching value
+  if (key.endsWith('s') && key.length > 1) {
+    const singular = key.slice(0, -1)
+    const singularVal = data[singular]
+    if (singularVal !== undefined && singularVal !== null) {
+      if (Array.isArray(value) && value.length === 1 && String(value[0]) === String(singularVal)) {
+        return true
+      }
+    }
+  }
+  // Also check IDs vs ID (e.g. SecurityRuleIDs vs SecurityRuleID)
+  if (key.endsWith('IDs')) {
+    const singular = key.slice(0, -1) // SecurityRuleIDs -> SecurityRuleID  
+    const singularVal = data[singular]
+    if (singularVal !== undefined && singularVal !== null) {
+      if (Array.isArray(value) && value.length === 1 && String(value[0]) === String(singularVal)) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
 function groupLogData(data: Record<string, any>, ds: string): Array<{ group: string; fields: Array<{ key: string; value: any }> }> {
   const groups = FIELD_GROUPS[ds] || {}
   const groupedFields = new Set<string>()
@@ -311,7 +345,7 @@ function groupLogData(data: Record<string, any>, ds: string): Array<{ group: str
 
   for (const [groupName, fieldNames] of Object.entries(groups)) {
     const fields = fieldNames
-      .filter(f => data[f] !== undefined && data[f] !== null && data[f] !== '')
+      .filter(f => isUsefulValue(data[f]) && !isRedundantPlural(f, data[f], data))
       .map(f => {
         groupedFields.add(f)
         return { key: f, value: data[f] }
@@ -324,7 +358,7 @@ function groupLogData(data: Record<string, any>, ds: string): Array<{ group: str
   // Collect ungrouped fields
   const ungrouped = Object.entries(data)
     .filter(([k]) => !groupedFields.has(k))
-    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .filter(([k, v]) => isUsefulValue(v) && !isRedundantPlural(k, v, data))
     .map(([k, v]) => ({ key: k, value: v }))
   if (ungrouped.length > 0) {
     result.push({ group: 'Other', fields: ungrouped })
