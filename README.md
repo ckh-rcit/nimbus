@@ -1,279 +1,266 @@
-# NIMBUS - Cloudflare Log Dashboard
+# NIMBUS
 
-A custom dashboard for displaying and searching Cloudflare Logpush data. Built with Nuxt 4, Bun, PostgreSQL, and Drizzle ORM.
+A self-hosted dashboard for ingesting, searching, and analyzing Cloudflare Logpush data. Built with Nuxt 4, PostgreSQL, and Drizzle ORM.
 
 ![NIMBUS Dashboard](https://img.shields.io/badge/Cloudflare-F6821F?logo=cloudflare&logoColor=white) ![Nuxt](https://img.shields.io/badge/Nuxt%204-00DC82?logo=nuxt&logoColor=white) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 
+NIMBUS receives log data directly from Cloudflare Logpush via HTTP destination, stores it in PostgreSQL, and provides a web interface for exploring HTTP request and firewall event logs across all your zones.
+
+---
+
 ## Features
 
-- 📊 **Multi-dataset support**: HTTP requests, Firewall events, DNS logs, Audit logs, and more
-- 🔍 **Full-text search**: Search across all log fields
-- 🌐 **Zone management**: Auto-discovers zones from Cloudflare API (supports 50+ zones)
-- ⏱️ **Time range filtering**: Quick presets from 15 minutes to 30 days
-- 🔄 **Auto-refresh**: Optional 30-second polling for real-time monitoring
-- 🎨 **Dark theme**: Vercel-inspired UI with Cloudflare orange accents
-- 🐳 **Docker ready**: Deploy easily via Portainer/Docker Compose
+- **Unified log ingestion** -- Single HTTP endpoint receives Cloudflare Logpush data for HTTP requests and firewall events, with automatic dataset detection.
+- **Pre-aggregated analytics** -- Write-time rollup table powers the dashboard without scanning millions of raw log rows. Top talkers, firewall action breakdown, and most targeted zones all query a compact summary table.
+- **Full-text and field-level search** -- Search across all log fields or target specific columns (Client IP, Ray ID, host, path, etc.).
+- **Zone management** -- Auto-discovers zones from the Cloudflare API on startup. Supports accounts with 50+ zones.
+- **Time range filtering** -- Presets from 15 minutes to 30 days, plus an "All Time" option.
+- **Auto-refresh** -- Optional 30-second polling for near-real-time monitoring.
+- **Filterable log viewer** -- Click any cell value to add it as a filter. Filters are composable and persist in the URL for sharing.
+- **Detailed log expansion** -- Expand any log row to see all fields grouped by category (Request, Client, Response, Cache, Security, Bot, TLS, Edge, etc.) with scrollable cards for large payloads.
+- **IP enrichment** -- Client IP tooltips show ISP/organization, ASN, and country code using data already present in Cloudflare logs.
+- **Clickable firewall actions** -- Click an action in the dashboard to jump directly to filtered firewall event logs.
+- **CSV export** -- Export the current log view to CSV.
+- **In-memory cache with stampede protection** -- Prevents redundant database queries under concurrent load.
+- **Dark theme** -- Minimal dark UI with Cloudflare orange accents.
+- **Docker ready** -- Single-container deployment via Docker Compose or Portainer.
 
-## Prerequisites
+---
+
+## Requirements
 
 - [Bun](https://bun.sh/) runtime (v1.0+)
-- PostgreSQL database (v14+)
+- PostgreSQL 14+
 - Cloudflare account with:
   - API token with `Zone.Zone:Read` permission
   - Account ID
+  - One or more Logpush jobs configured to send to this instance
+
+---
 
 ## Quick Start
 
-### 1. Clone and install dependencies
+### 1. Install dependencies
 
 ```bash
-git clone <your-repo>
-cd nimbus
 bun install
 ```
 
 ### 2. Configure environment
 
-```bash
-cp .env.example .env
-```
-
-Edit `.env` with your credentials:
+Create a `.env` file in the project root:
 
 ```env
-DATABASE_URL=postgres://nimbus:nimbus@localhost:5432/nimbus
+DATABASE_URL=postgres://nimbus:your_password@localhost:5432/nimbus
 CLOUDFLARE_API_TOKEN=your_cloudflare_api_token
 CLOUDFLARE_ACCOUNT_ID=your_account_id
 INGEST_AUTH_TOKEN=your_secure_random_token
 ```
 
-### 3. Setup database
+### 3. Set up the database
 
 ```bash
 # Start PostgreSQL (if using Docker)
 docker run -d --name nimbus-postgres \
   -e POSTGRES_USER=nimbus \
-  -e POSTGRES_PASSWORD=nimbus \
+  -e POSTGRES_PASSWORD=your_password \
   -e POSTGRES_DB=nimbus \
   -p 5432:5432 \
   postgres:16-alpine
 
-# Run migrations
+# Push the schema
 bun run db:push
+
+# Create expression indexes for query performance
+bun run db:indexes
 ```
 
-### 4. Start development server
+### 4. Start the development server
 
 ```bash
 bun run dev
 ```
 
-Visit [http://localhost:3000](http://localhost:3000)
+The application will be available at `http://localhost:3000`. On first start, NIMBUS verifies the Cloudflare API token and syncs all zones from your account.
+
+---
 
 ## Database Commands
 
 ```bash
-# Generate migrations
-bun run db:generate
-
-# Push schema to database
-bun run db:push
-
-# Open Drizzle Studio
-bun run db:studio
+bun run db:push       # Push schema to database
+bun run db:generate   # Generate migration files
+bun run db:studio     # Open Drizzle Studio (visual schema browser)
+bun run db:indexes    # Create expression indexes on JSONB fields
 ```
+
+Note: `db:push` drops manually-created expression indexes. Always run `db:indexes` after a schema push.
+
+---
 
 ## Docker Deployment
 
-### Using Docker Compose
+### Docker Compose
 
 ```bash
-# Set environment variables
-export CLOUDFLARE_API_TOKEN=your_token
-export CLOUDFLARE_ACCOUNT_ID=your_account_id
-export INGEST_AUTH_TOKEN=your_secure_token
-
-# Build and start
 docker-compose up -d
 ```
 
-### Using Portainer
+Environment variables can be set in the shell, in a `.env` file, or passed directly in the compose file.
 
-1. Create a new stack in Portainer
-2. Paste the contents of `docker-compose.yml`
-3. Add environment variables in Portainer's UI
-4. Deploy the stack
+### Portainer
+
+1. Create a new stack in Portainer.
+2. Paste the contents of `docker-compose.yml`.
+3. Add the four required environment variables in the Portainer UI.
+4. Deploy the stack.
+
+---
 
 ## Configuring Cloudflare Logpush
 
-### 1. Create a Logpush job
+NIMBUS uses a single ingestion endpoint. Cloudflare Logpush sends batches of newline-delimited JSON (NDJSON) to this endpoint, and NIMBUS detects the dataset automatically based on the fields present in each batch.
 
-In Cloudflare Dashboard:
-1. Go to **Analytics & Logs** → **Logpush**
-2. Click **Create a Logpush job**
-3. Select your dataset (e.g., HTTP requests)
-4. Choose **HTTP** as destination
+### Destination URL format
 
-### 2. Configure HTTP destination
-
-**Destination URL format:**
 ```
-https://your-nimbus-domain.com/api/ingest/{dataset}?header_Authorization=Bearer%20{YOUR_INGEST_TOKEN}
+https://your-domain.com/api/ingest?token=YOUR_INGEST_TOKEN
 ```
 
-**Example for HTTP requests:**
-```
-https://nimbus.example.com/api/ingest/http_requests?header_Authorization=Bearer%20your_secure_token
-```
+### Setting up a Logpush job
 
-### 3. Available dataset endpoints
+1. In the Cloudflare Dashboard, go to **Analytics & Logs** then **Logpush**.
+2. Click **Create a Logpush job**.
+3. Select the dataset (HTTP requests or Firewall events).
+4. Choose **Custom HTTP** as the destination.
+5. Enter the destination URL shown above.
+6. Cloudflare will send a validation request -- the endpoint handles this automatically.
+7. Select the fields you want to include (all fields are supported).
 
-| Dataset | Endpoint | Scope |
-|---------|----------|-------|
-| HTTP Requests | `/api/ingest/http_requests` | Zone |
-| Firewall Events | `/api/ingest/firewall_events` | Zone |
-| DNS Logs | `/api/ingest/dns_logs` | Zone |
-| Spectrum Events | `/api/ingest/spectrum_events` | Zone |
-| Audit Logs | `/api/ingest/audit_logs` | Account |
-| Gateway DNS | `/api/ingest/gateway_dns` | Account |
-| Gateway HTTP | `/api/ingest/gateway_http` | Account |
-| Workers Traces | `/api/ingest/workers_trace_events` | Account |
+### Supported datasets
 
-### 4. Validate the destination
+| Dataset | Scope | Description |
+|---------|-------|-------------|
+| HTTP Requests | Zone | Client requests, edge/origin response details, cache status, TLS, bot scores |
+| Firewall Events | Zone | WAF actions, rate limiting, managed challenges, rule metadata |
 
-Cloudflare will send a test request to verify your endpoint. The endpoint at `/api/ingest/validate` handles this automatically.
+---
 
-## API Endpoints
+## API Reference
 
 ### Zones
 
-- `GET /api/zones` - List all cached zones
-- `POST /api/zones/sync` - Sync zones from Cloudflare API
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/zones` | List all synced zones |
+| POST | `/api/zones/sync` | Re-sync zones from Cloudflare API |
 
 ### Logs
 
-- `GET /api/logs` - Query logs with filters
-  - `?dataset=http_requests` - Filter by dataset
-  - `?zoneId=abc123` - Filter by zone
-  - `?search=example.com` - Search in logs
-  - `?startTime=2024-01-01T00:00:00Z` - Start time filter
-  - `?endTime=2024-01-02T00:00:00Z` - End time filter
-  - `?limit=100` - Results per page (max 1000)
-  - `?offset=0` - Pagination offset
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/logs` | Query logs with filters |
+
+Query parameters for `/api/logs`:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `dataset` | string | `http_requests` or `firewall_events` |
+| `zoneId` | string | Filter by zone ID |
+| `search` | string | Full-text search across log fields |
+| `searchField` | string | Restrict search to a specific field |
+| `filters` | JSON string | Array of `{field, value}` exact-match filters |
+| `startTime` | ISO 8601 | Start of time range |
+| `endTime` | ISO 8601 | End of time range |
+| `limit` | number | Results per page (default 100, max 1000) |
+| `offset` | number | Pagination offset |
+
+### Statistics
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/stats` | Dashboard overview (total logs, zones, logs today) |
+| GET | `/api/stats/top-talkers` | Top hosts, IPs, firewall actions, most targeted zones |
 
 ### Ingestion
 
-- `POST /api/ingest/{dataset}` - Receive Logpush data
-- `POST /api/ingest/validate` - Validation endpoint for Cloudflare
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/ingest` | Receive Logpush data (auto-detects dataset) |
 
-### Stats
-
-- `GET /api/stats` - Dashboard statistics
+---
 
 ## Project Structure
 
 ```
 nimbus/
-├── app/
-│   ├── layouts/
-│   │   └── default.vue      # Main layout with sidebar
-│   ├── pages/
-│   │   ├── index.vue        # Dashboard home
-│   │   └── logs/
-│   │       └── [dataset].vue # Log viewer
-│   └── app.vue
-├── server/
-│   ├── api/
-│   │   ├── ingest/          # Logpush ingestion
-│   │   ├── logs/            # Log queries
-│   │   ├── zones/           # Zone management
-│   │   └── stats/           # Statistics
-│   ├── database/
-│   │   ├── schema.ts        # Drizzle schema
-│   │   └── index.ts         # DB client
-│   ├── plugins/
-│   │   └── startup.ts       # Token validation & zone sync
-│   └── utils/
-│       └── cloudflare.ts    # CF API client
-├── shared/
-│   └── types/
-│       └── index.ts         # TypeScript types
-├── docker-compose.yml
-├── Dockerfile
-└── drizzle.config.ts
+  app/
+    layouts/
+      default.vue           Main layout with sidebar navigation
+    pages/
+      index.vue             Dashboard with stats and top talkers
+      logs/
+        [dataset].vue       Log viewer with search, filters, pagination
+  server/
+    api/
+      ingest.post.ts        Logpush ingestion with auto-detection
+      logs/index.get.ts     Log query endpoint
+      stats/index.get.ts    Dashboard statistics
+      stats/top-talkers.get.ts  Pre-aggregated analytics
+      zones/index.get.ts    Zone listing
+      zones/sync.post.ts    Zone sync from Cloudflare
+    database/
+      schema.ts             Drizzle ORM schema (logs, zones, stats_rollup)
+      index.ts              Database connection with pool + statement timeout
+    plugins/
+      startup.ts            Token verification and initial zone sync
+    utils/
+      cache.ts              In-memory cache with stampede protection
+      cloudflare.ts         Cloudflare API client
+      rollup.ts             Write-time pre-aggregation logic
+  shared/
+    types/index.ts          Shared TypeScript types and dataset configs
+  scripts/
+    add-analytics-indexes.ts  Expression index migration
+    reset-db.ts             Database reset utility
 ```
+
+---
 
 ## Environment Variables
 
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `DATABASE_URL` | PostgreSQL connection string | Yes |
-| `CLOUDFLARE_API_TOKEN` | CF API token with Zone.Zone:Read | Yes |
-| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID | Yes |
-| `INGEST_AUTH_TOKEN` | Token for authenticating Logpush | Yes |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API token with `Zone.Zone:Read` | Yes |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID | Yes |
+| `INGEST_AUTH_TOKEN` | Bearer token for authenticating Logpush requests | Yes |
 
-## Security Notes
+---
 
-- Always use HTTPS in production for the ingestion endpoint
-- Rotate `INGEST_AUTH_TOKEN` periodically
-- The Cloudflare API token only needs read access to zones
-- Consider adding IP allowlisting for Cloudflare's Logpush IPs
+## Performance Notes
+
+NIMBUS is designed to handle millions of log rows efficiently:
+
+- **Pre-aggregation**: A `stats_rollup` table is populated at ingest time. Dashboard queries read from this small summary table instead of scanning raw logs.
+- **Expression indexes**: JSONB fields used in common queries (host, status, action) have partial expression indexes.
+- **Statement timeout**: All database connections enforce a 20-second statement timeout to prevent runaway queries.
+- **Connection pooling**: A pool of 10 persistent connections is shared across all requests.
+- **Caching**: API responses are cached in memory with configurable TTL (30 seconds for stats, 5 minutes for top talkers). Stampede protection ensures only one caller runs an expensive query while others wait.
+
+After running `drizzle-kit push`, always run `bun run db:indexes` to restore the expression indexes (drizzle-kit drops indexes it does not manage).
+
+---
+
+## Security
+
+- Use HTTPS in production for the ingestion endpoint.
+- Rotate `INGEST_AUTH_TOKEN` periodically.
+- The Cloudflare API token only requires read access to zones.
+- Consider restricting ingestion to Cloudflare's published Logpush IP ranges.
+
+---
 
 ## License
 
-MIT
-```
-
-## Development Server
-
-Start the development server on `http://localhost:3000`:
-
-```bash
-# npm
-npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
-```
-
-## Production
-
-Build the application for production:
-
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+AGPL-3.0 -- see [LICENSE](LICENSE) for details.
