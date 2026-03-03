@@ -6,6 +6,8 @@ A self-hosted dashboard for ingesting, searching, and analyzing Cloudflare Logpu
 
 NIMBUS receives log data directly from Cloudflare Logpush via HTTP destination, stores it in PostgreSQL, and provides a web interface for exploring HTTP request and firewall event logs across all your zones.
 
+<img width="1912" height="948" alt="msedge_qDO1HiluZq" src="https://github.com/user-attachments/assets/8741d0f0-257b-4c46-a378-714c06f0adf1" />
+
 ---
 
 ## Features
