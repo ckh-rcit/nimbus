@@ -136,6 +136,7 @@ const datasetColumnsConfig: Record<string, Array<{ key: string; label: string }>
     { key: 'data.Action', label: 'Action' },
     { key: 'data.Source', label: 'Source' },
     { key: 'data.RuleID', label: 'Rule ID' },
+    { key: 'data.Description', label: 'Rule Name' },
     { key: 'data.ClientRequestHost', label: 'Host' },
     { key: 'data.ClientRequestPath', label: 'Path' },
     { key: 'data.EdgeColoCode', label: 'Colo' }
