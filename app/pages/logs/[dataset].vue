@@ -281,7 +281,7 @@ function getColumnStyle(col: string) {
 const FIELD_GROUPS: Record<string, Record<string, string[]>> = {
   http_requests: {
     'Request': ['ClientRequestMethod', 'ClientRequestHost', 'ClientRequestPath', 'ClientRequestURI', 'ClientRequestProtocol', 'ClientRequestScheme', 'ClientRequestReferer', 'ClientRequestUserAgent', 'ClientRequestSource', 'ClientRequestBytes', 'ClientDeviceType', 'ClientXRequestedWith', 'Cookies', 'EdgeRequestHost', 'RequestHeaders'],
-    'Client': ['ClientIP', 'ClientASN', 'ClientCountry', 'ClientCity', 'ClientRegionCode', 'ClientLatitude', 'ClientLongitude', 'ClientIPClass', 'ClientSrcPort', 'ClientTCPRTTMs'],
+    'Client': ['ClientIP', 'ClientASN', 'ClientASNDescription', 'ClientCountry', 'ClientCity', 'ClientRegionCode', 'ClientLatitude', 'ClientLongitude', 'ClientIPClass', 'ClientSrcPort', 'ClientTCPRTTMs'],
     'Response': ['EdgeResponseStatus', 'EdgeResponseContentType', 'EdgeResponseBytes', 'EdgeResponseBodyBytes', 'EdgeResponseCompressionRatio', 'OriginResponseStatus', 'OriginResponseBytes', 'OriginIP', 'OriginResponseHTTPExpires', 'OriginResponseHTTPLastModified', 'ResponseHeaders'],
     'Cache': ['CacheCacheStatus', 'CacheReserveUsed', 'CacheResponseBytes', 'CacheResponseStatus', 'CacheTieredFill'],
     'Performance': ['EdgeStartTimestamp', 'EdgeEndTimestamp', 'EdgeTimeToFirstByteMs', 'OriginDNSResponseTimeMs', 'OriginRequestHeaderSendDurationMs', 'OriginResponseDurationMs', 'OriginResponseHeaderReceiveDurationMs', 'OriginResponseTime', 'OriginTCPHandshakeDurationMs', 'OriginTLSHandshakeDurationMs', 'WorkerCPUTime', 'WorkerWallTimeUs'],

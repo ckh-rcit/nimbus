@@ -60,7 +60,7 @@ const DATASET_SIGNATURES: Array<{
       'PayPerCrawlStatus', 'RayID', 'VerifiedBotCategory', 'WorkerScriptName', 'WorkerSubrequest',
       'WorkerSubrequestCount', 'ZoneName',
       // Request
-      'ClientASN', 'ClientCountry', 'ClientDeviceType', 'ClientIP', 'ClientIPClass', 'ClientRegionCode',
+      'ClientASN', 'ClientASNDescription', 'ClientCountry', 'ClientDeviceType', 'ClientIP', 'ClientIPClass', 'ClientRegionCode',
       'ClientRequestBytes', 'ClientRequestHost', 'ClientRequestMethod', 'ClientRequestPath',
       'ClientRequestProtocol', 'ClientRequestReferer', 'ClientRequestScheme', 'ClientRequestSource',
       'ClientRequestURI', 'ClientRequestUserAgent', 'ClientSrcPort', 'ClientXRequestedWith',
