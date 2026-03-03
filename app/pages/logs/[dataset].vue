@@ -870,7 +870,7 @@ function exportCsv() {
 
 .expanded-content {
   padding: 16px;
-  overflow: hidden;
+  min-width: 0;
   max-width: 100%;
 }
 
@@ -906,7 +906,6 @@ function exportCsv() {
   border: 1px solid #262626;
   border-radius: 6px;
   padding: 12px;
-  overflow: hidden;
   min-width: 0;
 }
 
@@ -947,10 +946,10 @@ function exportCsv() {
 
 .detail-field-value {
   color: #d4d4d4;
-  word-break: break-all;
   overflow-wrap: anywhere;
+  word-break: break-word;
   min-width: 0;
-  overflow: hidden;
+  flex: 1;
 }
 
 .log-json {
