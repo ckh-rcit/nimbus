@@ -92,47 +92,33 @@ const DATASET_SIGNATURES: Array<{
     ],
     minScore: 4
   },
-  { 
-    dataset: 'dns_logs', 
-    uniqueFields: [
-      'QueryName', 'QueryType', 'ResponseCode', 'ResponseCached',
-      'EDNSSubnet', 'EDNSSubnetLength', 'ColoCode'
-    ],
-    commonFields: ['SourceIP', 'Timestamp'],
-    minScore: 4
-  }
 ]
 
 // Field mappings for extracting common fields from different datasets
 const TIMESTAMP_FIELDS: Record<string, string> = {
   http_requests: 'EdgeStartTimestamp',
-  firewall_events: 'Datetime',
-  dns_logs: 'Timestamp'
+  firewall_events: 'Datetime'
 }
 
 const RAY_ID_FIELDS: Record<string, string> = {
   http_requests: 'RayID',
   firewall_events: 'RayID'
-  // Note: dns_logs does not have RayID per Cloudflare docs
 }
 
 const CLIENT_IP_FIELDS: Record<string, string> = {
   http_requests: 'ClientIP',
-  firewall_events: 'ClientIP',
-  dns_logs: 'SourceIP'
+  firewall_events: 'ClientIP'
 }
 
 const ZONE_ID_FIELDS: Record<string, string> = {
   http_requests: 'ZoneID',
-  firewall_events: 'ZoneID',
-  dns_logs: 'ZoneID'
+  firewall_events: 'ZoneID'
 }
 
 // Fields containing host/domain for zone lookup fallback
 const HOST_FIELDS: Record<string, string> = {
   http_requests: 'ClientRequestHost',
-  firewall_events: 'ClientRequestHost',
-  dns_logs: 'QueryName'
+  firewall_events: 'ClientRequestHost'
 }
 
 function parseTimestamp(value: unknown): Date {
@@ -334,12 +320,6 @@ export default defineEventHandler(async (event) => {
             // Extract hostname from URL if needed
             if (host.startsWith('http')) {
               try { host = new URL(host).hostname } catch {}
-            }
-            
-            // For DNS logs, strip the .cdn.cloudflare.net. suffix
-            // QueryName looks like: subdomain.example.com.cdn.cloudflare.net.
-            if (dataset === 'dns_logs' && host.includes('.cdn.cloudflare.net')) {
-              host = host.replace(/\.cdn\.cloudflare\.net\.?$/i, '')
             }
             
             // Remove trailing dot if present

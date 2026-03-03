@@ -10,7 +10,8 @@
     "postinstall": "nuxt prepare",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:indexes": "npx tsx scripts/add-analytics-indexes.ts"
   },
   "dependencies": {
     "@nuxt/eslint": "1.13.0",

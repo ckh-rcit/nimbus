@@ -11,7 +11,6 @@ import * as schema from '../server/database/schema'
 const HOST_FIELDS: Record<string, string> = {
   http_requests: 'ClientRequestHost',
   firewall_events: 'ClientRequestHost',
-  dns_logs: 'QueryName',
   nel_reports: 'URL',
 }
 
@@ -73,12 +72,6 @@ async function backfillZoneIds() {
         try {
           host = new URL(host).hostname
         } catch {}
-      }
-      
-      // For DNS logs, strip the .cdn.cloudflare.net. suffix
-      // QueryName looks like: subdomain.example.com.cdn.cloudflare.net.
-      if (log.dataset === 'dns_logs' && host.includes('.cdn.cloudflare.net')) {
-        host = host.replace(/\.cdn\.cloudflare\.net\.?$/i, '')
       }
       
       // Remove trailing dot if present

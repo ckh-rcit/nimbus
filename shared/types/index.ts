@@ -1,7 +1,6 @@
 // Dataset types supported by NIMBUS
 // Zone-scoped datasets (per domain/zone)
 export type ZoneDataset = 
-  | 'dns_logs'
   | 'firewall_events'
   | 'http_requests'
 
@@ -9,7 +8,6 @@ export type Dataset = ZoneDataset
 export type DatasetScope = 'zone'
 
 export const ZONE_DATASETS: ZoneDataset[] = [
-  'dns_logs',
   'firewall_events', 
   'http_requests'
 ]
@@ -33,8 +31,7 @@ export interface DatasetConfig {
 // Zone-scoped dataset configs
 export const ZONE_DATASET_CONFIGS: DatasetConfig[] = [
   { id: 'http_requests', label: 'HTTP Requests', icon: 'i-heroicons-globe-alt', scope: 'zone', description: 'HTTP request logs with client, edge, and origin details' },
-  { id: 'firewall_events', label: 'Firewall Events', icon: 'i-heroicons-shield-check', scope: 'zone', description: 'WAF, rate limiting, and security events' },
-  { id: 'dns_logs', label: 'DNS Logs', icon: 'i-heroicons-server', scope: 'zone', description: 'DNS query and response logs' }
+  { id: 'firewall_events', label: 'Firewall Events', icon: 'i-heroicons-shield-check', scope: 'zone', description: 'WAF, rate limiting, and security events' }
 ]
 
 // All dataset configs combined

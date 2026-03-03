@@ -17,7 +17,11 @@ export function getDatabase() {
     _client = postgres(config.databaseUrl, {
       max: 10, // Connection pool size
       idle_timeout: 20,
-      connect_timeout: 10
+      connect_timeout: 10,
+      // 20s statement timeout prevents runaway analytics queries from causing 502s
+      connection: {
+        statement_timeout: 20000
+      }
     })
 
     _db = drizzle(_client, { schema })

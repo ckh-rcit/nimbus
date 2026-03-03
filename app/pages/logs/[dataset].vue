@@ -133,13 +133,7 @@ const datasetColumnsConfig: Record<string, Array<{ key: string; label: string }>
     { key: 'data.ClientRequestPath', label: 'Path' },
     { key: 'data.EdgeColoCode', label: 'Colo' }
   ],
-  dns_logs: [
-    { key: 'data.QueryName', label: 'Query' },
-    { key: 'data.QueryType', label: 'Type' },
-    { key: 'data.ResponseCode', label: 'Response' },
-    { key: 'data.ResponseCached', label: 'Cached' },
-    { key: 'data.ColoCode', label: 'Colo' }
-  ]
+
 }
 
 // Get dataset-specific columns
@@ -299,11 +293,7 @@ const FIELD_GROUPS: Record<string, Record<string, string[]>> = {
     'Security': ['ContentScanObjResults', 'ContentScanObjSizes', 'ContentScanObjTypes', 'LeakedCredentialCheckResult'],
     'General': ['Datetime', 'RayID', 'OriginatorRayID']
   },
-  dns_logs: {
-    'Query': ['QueryName', 'QueryType', 'ResponseCode', 'ResponseCached'],
-    'Network': ['SourceIP', 'EDNSSubnet', 'EDNSSubnetLength', 'ColoCode'],
-    'General': ['Timestamp']
-  }
+
 }
 
 // Group log data fields into categories

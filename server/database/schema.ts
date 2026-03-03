@@ -15,7 +15,7 @@ export const zones = pgTable('zones', {
 // Logs table - stores all log entries with JSONB data
 export const logs = pgTable('logs', {
   id: serial('id').primaryKey(),
-  dataset: varchar('dataset', { length: 50 }).notNull(), // http_requests, dns_logs, etc.
+  dataset: varchar('dataset', { length: 50 }).notNull(), // http_requests, firewall_events, etc.
   scope: varchar('scope', { length: 10 }).notNull().default('zone'), // 'zone' or 'account'
   zoneId: text('zone_id'), // For zone-scoped datasets
   accountId: text('account_id'), // For account-scoped datasets  
