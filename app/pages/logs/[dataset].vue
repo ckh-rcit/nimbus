@@ -31,8 +31,15 @@ const searchQuery = ref('')
 const debouncedSearch = refDebounced(searchQuery, 300)
 const searchField = ref<string | null>(null)
 
-// Filter state
-const activeFilters = ref<Array<{ field: string; value: string }>>([])
+// Filter state — seed from URL query params (e.g. ?filter.data.Action=block)
+const initialFilters: Array<{ field: string; value: string }> = []
+const routeQuery = useRoute().query
+for (const [key, val] of Object.entries(routeQuery)) {
+  if (key.startsWith('filter.') && typeof val === 'string') {
+    initialFilters.push({ field: key.replace('filter.', ''), value: val })
+  }
+}
+const activeFilters = ref<Array<{ field: string; value: string }>>(initialFilters)
 
 // Pagination
 const page = ref(1)

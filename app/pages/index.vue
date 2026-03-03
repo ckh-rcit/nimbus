@@ -266,10 +266,15 @@ function percentWidth(percent: number): string {
             Firewall Actions
             <span class="fw-total" v-if="topTalkers.firewallTotal">({{ formatNumber(topTalkers.firewallTotal) }} total)</span>
             <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5 tooltip-icon" />
-            <span class="custom-tooltip">Breakdown of how Cloudflare's firewall responded to requests. Shows the percentage share of each action type — Block, Challenge, Allow, etc.</span>
+            <span class="custom-tooltip">Breakdown of how Cloudflare's firewall responded to requests. Shows the percentage share of each action type. Click an action to view those logs.</span>
           </h3>
           <div class="talker-list">
-            <div v-for="item in topTalkers.firewallActions" :key="item.value" class="talker-item">
+            <NuxtLink
+              v-for="item in topTalkers.firewallActions"
+              :key="item.value"
+              :to="{ path: '/logs/firewall_events', query: { 'filter.data.Action': item.value } }"
+              class="talker-item talker-item-link"
+            >
               <div class="talker-info">
                 <span class="talker-value">
                   <span class="action-badge" :class="'action-' + item.value.toLowerCase()">{{ item.value }}</span>
@@ -279,7 +284,7 @@ function percentWidth(percent: number): string {
               <div class="talker-bar-track">
                 <div class="talker-bar" :class="'bar-' + item.value.toLowerCase()" :style="{ width: percentWidth(item.percent) }"></div>
               </div>
-            </div>
+            </NuxtLink>
           </div>
         </div>
 
@@ -627,6 +632,19 @@ function percentWidth(percent: number): string {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.talker-item-link {
+  text-decoration: none;
+  border-radius: 6px;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.talker-item-link:hover {
+  background-color: #1f1f1f;
 }
 
 .talker-info {

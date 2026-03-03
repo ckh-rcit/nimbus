@@ -2,8 +2,8 @@ import { getDatabase, schema } from '~~/server/database'
 import { sql } from 'drizzle-orm'
 import { cachedQuery } from '~~/server/utils/cache'
 
-// Cache TTL: 60 seconds — analytics data doesn't need to be real-time
-const CACHE_TTL = 60_000
+// Cache TTL: 5 minutes — rollup data is already pre-aggregated, no need for frequent refreshes
+const CACHE_TTL = 5 * 60 * 1000
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -19,62 +19,57 @@ export default defineEventHandler(async (event) => {
     const since = new Date(Date.now() - hours * 60 * 60 * 1000)
     const sinceISO = since.toISOString()
 
-    // Use raw SQL to leverage the expression indexes we created
+    // All queries now read from stats_rollup (small summary table) instead of scanning millions of raw logs.
+    // Each query sums the pre-aggregated hourly counts.
+    // zone_id uses '__all__' sentinel instead of NULL for proper unique index behavior.
     const zoneFilter = zoneId ? sql`AND zone_id = ${zoneId}` : sql``
 
-    // Run all four queries in parallel
     const [topHosts, topActions, topIps, mostTargeted] = await Promise.all([
-      // Top 5 Hosts — uses logs_http_host_expr_idx
+      // Top 5 Hosts
       db.execute<{ value: string; count: number }>(sql`
-        SELECT data->>'ClientRequestHost' AS value, count(*)::int AS count
-        FROM logs
-        WHERE dataset = 'http_requests'
-          AND timestamp >= ${sinceISO}::timestamptz
+        SELECT dimension_value AS value, sum(count)::int AS count
+        FROM stats_rollup
+        WHERE metric = 'host'
+          AND hour_bucket >= ${sinceISO}::timestamptz
           ${zoneFilter}
-          AND data->>'ClientRequestHost' IS NOT NULL
-        GROUP BY data->>'ClientRequestHost'
+        GROUP BY dimension_value
         ORDER BY count DESC
         LIMIT 5
       `).catch(() => []),
 
-      // All Firewall Actions (for percentage breakdown) — uses logs_fw_action_expr_idx
+      // All Firewall Actions (for percentage breakdown)
       db.execute<{ value: string; count: number }>(sql`
-        SELECT data->>'Action' AS value, count(*)::int AS count
-        FROM logs
-        WHERE dataset = 'firewall_events'
-          AND timestamp >= ${sinceISO}::timestamptz
+        SELECT dimension_value AS value, sum(count)::int AS count
+        FROM stats_rollup
+        WHERE metric = 'fw_action'
+          AND hour_bucket >= ${sinceISO}::timestamptz
           ${zoneFilter}
-          AND data->>'Action' IS NOT NULL
-        GROUP BY data->>'Action'
+        GROUP BY dimension_value
         ORDER BY count DESC
       `).catch(() => []),
 
-      // Top 5 Incoming IPs — uses logs_ts_client_ip_idx / logs_zone_ts_client_ip_idx
+      // Top 5 Incoming IPs
       db.execute<{ value: string; count: number }>(sql`
-        SELECT client_ip AS value, count(*)::int AS count
-        FROM logs
-        WHERE timestamp >= ${sinceISO}::timestamptz
+        SELECT dimension_value AS value, sum(count)::int AS count
+        FROM stats_rollup
+        WHERE metric = 'client_ip'
+          AND hour_bucket >= ${sinceISO}::timestamptz
           ${zoneFilter}
-          AND client_ip IS NOT NULL
-        GROUP BY client_ip
+        GROUP BY dimension_value
         ORDER BY count DESC
         LIMIT 5
       `).catch(() => []),
 
-      // Most Targeted Zones — zones with the most mitigated (non-allow) firewall events
-      // Only relevant when viewing all zones (no zone filter)
+      // Most Targeted Zones (only when viewing all zones)
       zoneId
         ? Promise.resolve([])
         : db.execute<{ zone_id: string; zone_name: string; count: number }>(sql`
-            SELECT l.zone_id, COALESCE(z.name, l.zone_id) AS zone_name, count(*)::int AS count
-            FROM logs l
-            LEFT JOIN zones z ON z.id = l.zone_id
-            WHERE l.dataset = 'firewall_events'
-              AND l.timestamp >= ${sinceISO}::timestamptz
-              AND l.zone_id IS NOT NULL
-              AND l.data->>'Action' IS NOT NULL
-              AND l.data->>'Action' NOT IN ('allow', 'skip')
-            GROUP BY l.zone_id, z.name
+            SELECT r.dimension_value AS zone_id, COALESCE(z.name, r.dimension_value) AS zone_name, sum(r.count)::int AS count
+            FROM stats_rollup r
+            LEFT JOIN zones z ON z.id = r.dimension_value
+            WHERE r.metric = 'fw_mitigated_zone'
+              AND r.hour_bucket >= ${sinceISO}::timestamptz
+            GROUP BY r.dimension_value, z.name
             ORDER BY count DESC
             LIMIT 5
           `).catch(() => [])
@@ -82,8 +77,8 @@ export default defineEventHandler(async (event) => {
 
     // Calculate firewall action percentages
     const actionsRaw = topActions as any[]
-    const actionsTotal = actionsRaw.reduce((sum, r) => sum + Number(r.count), 0)
-    const firewallActions = actionsRaw.map(r => ({
+    const actionsTotal = actionsRaw.reduce((sum: number, r: any) => sum + Number(r.count), 0)
+    const firewallActions = actionsRaw.map((r: any) => ({
       value: r.value || 'Unknown',
       count: Number(r.count),
       percent: actionsTotal > 0 ? Math.round((Number(r.count) / actionsTotal) * 1000) / 10 : 0

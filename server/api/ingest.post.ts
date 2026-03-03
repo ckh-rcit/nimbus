@@ -1,6 +1,7 @@
 import { gunzipSync } from 'node:zlib'
 import { getDatabase, schema } from '~~/server/database'
 import { getDatasetScope, type Dataset } from '~~/shared/types'
+import { extractRollupEntries, updateRollups } from '~~/server/utils/rollup'
 
 /**
  * Universal Logpush Ingestion Endpoint
@@ -369,6 +370,14 @@ export default defineEventHandler(async (event) => {
       }
       
       console.log(`[Ingest] Inserted ${logsToInsert.length} logs (detected: ${detectedDataset})`)
+      
+      // Update pre-aggregated stats rollup (non-blocking — don't fail ingest if rollup fails)
+      try {
+        const rollupEntries = extractRollupEntries(logsToInsert)
+        await updateRollups(rollupEntries)
+      } catch (rollupError) {
+        console.warn(`[Ingest] Rollup update failed (non-critical):`, rollupError)
+      }
     } catch (dbError) {
       console.error(`[Ingest] Database error:`, dbError)
       throw createError({

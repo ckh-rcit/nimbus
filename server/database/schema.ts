@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, serial, jsonb, index, varchar } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, serial, jsonb, index, varchar, integer, uniqueIndex } from 'drizzle-orm/pg-core'
 
 // Zones table - cached from Cloudflare API
 export const zones = pgTable('zones', {
@@ -43,3 +43,28 @@ export type Zone = typeof zones.$inferSelect
 export type NewZone = typeof zones.$inferInsert
 export type Log = typeof logs.$inferSelect
 export type NewLog = typeof logs.$inferInsert
+
+/**
+ * Pre-aggregated stats rollup table.
+ * Updated during ingest so top-talkers queries read a small summary
+ * instead of scanning millions of raw log rows.
+ * 
+ * Each row = one (hour_bucket, metric, dimension_value, zone_id) combination.
+ * metric examples: 'host', 'client_ip', 'fw_action', 'fw_mitigated_zone'
+ */
+export const statsRollup = pgTable('stats_rollup', {
+  id: serial('id').primaryKey(),
+  hourBucket: timestamp('hour_bucket', { withTimezone: true }).notNull(), // Truncated to the hour
+  metric: varchar('metric', { length: 30 }).notNull(),   // 'host' | 'client_ip' | 'fw_action' | 'fw_mitigated_zone'
+  dimensionValue: text('dimension_value').notNull(),       // The grouped value (e.g. IP, hostname, action name)
+  zoneId: text('zone_id').notNull().default('__all__'),    // Zone ID or '__all__' for cross-zone
+  count: integer('count').notNull().default(0)
+}, (table) => [
+  // Fast lookups: metric + time range, optionally filtered by zone
+  uniqueIndex('stats_rollup_uq').on(table.hourBucket, table.metric, table.dimensionValue, table.zoneId),
+  index('stats_rollup_metric_hour_idx').on(table.metric, table.hourBucket),
+  index('stats_rollup_zone_metric_hour_idx').on(table.zoneId, table.metric, table.hourBucket)
+])
+
+export type StatsRollup = typeof statsRollup.$inferSelect
+export type NewStatsRollup = typeof statsRollup.$inferInsert
