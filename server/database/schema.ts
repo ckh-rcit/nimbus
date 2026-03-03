@@ -46,11 +46,20 @@ export type NewLog = typeof logs.$inferInsert
 
 /**
  * Pre-aggregated stats rollup table.
- * Updated during ingest so top-talkers queries read a small summary
+ * Updated during ingest so queries read a small summary
  * instead of scanning millions of raw log rows.
  * 
  * Each row = one (hour_bucket, metric, dimension_value, zone_id) combination.
- * metric examples: 'host', 'client_ip', 'fw_action', 'fw_mitigated_zone'
+ * 
+ * Tracked metrics:
+ * - 'dataset': Dataset type (http_requests, firewall_events)
+ * - 'host': ClientRequestHost from http_requests  
+ * - 'client_ip': Client IP address from all datasets
+ * - 'fw_action': Firewall action from firewall_events
+ * - 'fw_mitigated_zone': Zones with non-allow actions
+ * - 'http_status': EdgeResponseStatus from http_requests
+ * - 'cache_status': CacheCacheStatus from http_requests
+ * - 'country': ClientCountry from all datasets
  */
 export const statsRollup = pgTable('stats_rollup', {
   id: serial('id').primaryKey(),

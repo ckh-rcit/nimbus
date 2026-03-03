@@ -47,8 +47,29 @@ async function main() {
   await sql.unsafe('TRUNCATE TABLE stats_rollup RESTART IDENTITY')
   console.log('[RESET] stats_rollup table cleared.')
 
-  // Create expression indexes (fast on empty table)
-  const indexes = [
+  // Create indexes for stats_rollup (fast on empty table)
+  console.log('[INDEX] Creating stats_rollup indexes...')
+  const rollupIndexes = [
+    `CREATE UNIQUE INDEX IF NOT EXISTS stats_rollup_uq
+     ON stats_rollup (hour_bucket, metric, dimension_value, zone_id)`,
+
+    `CREATE INDEX IF NOT EXISTS stats_rollup_metric_hour_idx
+     ON stats_rollup (metric, hour_bucket)`,
+
+    `CREATE INDEX IF NOT EXISTS stats_rollup_zone_metric_hour_idx
+     ON stats_rollup (zone_id, metric, hour_bucket)`
+  ]
+
+  for (const ddl of rollupIndexes) {
+    const name = ddl.match(/IF NOT EXISTS (\S+)/)?.[1] || 'unknown'
+    console.log(`[INDEX] Creating ${name}...`)
+    await sql.unsafe(ddl)
+    console.log(`[INDEX] ✓ ${name}`)
+  }
+
+  // Create expression indexes for logs (fast on empty table)
+  console.log('[INDEX] Creating logs expression indexes...')
+  const logsIndexes = [
     `CREATE INDEX IF NOT EXISTS logs_http_host_expr_idx
      ON logs ((data->>'ClientRequestHost'))
      WHERE dataset = 'http_requests' AND data->>'ClientRequestHost' IS NOT NULL`,
@@ -67,10 +88,18 @@ async function main() {
 
     `CREATE INDEX IF NOT EXISTS logs_zone_ts_client_ip_idx
      ON logs (zone_id, timestamp, client_ip)
-     WHERE client_ip IS NOT NULL`
+     WHERE client_ip IS NOT NULL`,
+    
+    `CREATE INDEX IF NOT EXISTS logs_http_cache_expr_idx
+     ON logs ((data->>'CacheCacheStatus'))
+     WHERE dataset = 'http_requests' AND data->>'CacheCacheStatus' IS NOT NULL`,
+    
+    `CREATE INDEX IF NOT EXISTS logs_country_expr_idx
+     ON logs ((data->>'ClientCountry'))
+     WHERE data->>'ClientCountry' IS NOT NULL`
   ]
 
-  for (const ddl of indexes) {
+  for (const ddl of logsIndexes) {
     const name = ddl.match(/IF NOT EXISTS (\S+)/)?.[1] || 'unknown'
     console.log(`[INDEX] Creating ${name}...`)
     await sql.unsafe(ddl)
@@ -78,11 +107,19 @@ async function main() {
   }
 
   // Verify
-  const existing = await sql`
+  const logsIdxes = await sql`
     SELECT indexname FROM pg_indexes WHERE tablename = 'logs' ORDER BY indexname
   `
-  console.log(`\n[DONE] ${existing.length} indexes on logs table:`)
-  for (const row of existing) {
+  console.log(`\n[DONE] ${logsIdxes.length} indexes on logs table:`)
+  for (const row of logsIdxes) {
+    console.log(`  ${row.indexname}`)
+  }
+
+  const rollupIdxes = await sql`
+    SELECT indexname FROM pg_indexes WHERE tablename = 'stats_rollup' ORDER BY indexname
+  `
+  console.log(`\n[DONE] ${rollupIdxes.length} indexes on stats_rollup table:`)
+  for (const row of rollupIdxes) {
     console.log(`  ${row.indexname}`)
   }
 

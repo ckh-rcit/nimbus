@@ -10,6 +10,10 @@ import { sql, and, gte } from 'drizzle-orm'
  * - Geographic distribution
  * - Top zones and hosts
  * - Performance indicators
+ * 
+ * NOTE: Uses full aggregations (not sampling) for accuracy.
+ * Queries are optimized with indexes on timestamp, dataset, and zone_id.
+ * Database statement timeout should be configured to prevent long-running queries.
  */
 
 export default defineEventHandler(async (event) => {
@@ -31,7 +35,7 @@ export default defineEventHandler(async (event) => {
   const zoneRollupFilter = zoneId ? sql`AND zone_id = ${zoneId}` : sql``
 
   try {
-    // Run all queries in parallel with error handling for optional queries
+    // Run all queries in parallel - ALL from rollup for maximum speed
     const [
       trafficCounts,
       firewallStats,
@@ -39,29 +43,22 @@ export default defineEventHandler(async (event) => {
       topZones,
       topHosts,
       topThreats,
-      cacheStats,
-      statusCodes
+      statusCodes,
+      cacheStats
     ] = await Promise.all([
-      // Total traffic by dataset (from rollup for better performance)
+      // Total traffic by dataset (from rollup - pre-aggregated)
       db.execute<{ dataset: string; count: number }>(sql`
         SELECT 
-          'http_requests' AS dataset,
-          COALESCE(SUM(count), 0)::int AS count
+          dimension_value AS dataset,
+          SUM(count)::int AS count
         FROM stats_rollup
-        WHERE metric = 'host'
+        WHERE metric = 'dataset'
           AND hour_bucket >= ${sinceISO}::timestamptz
           ${zoneRollupFilter}
-        UNION ALL
-        SELECT 
-          'firewall_events' AS dataset,
-          COALESCE(SUM(count), 0)::int AS count
-        FROM stats_rollup
-        WHERE metric = 'fw_action'
-          AND hour_bucket >= ${sinceISO}::timestamptz
-          ${zoneRollupFilter}
+        GROUP BY dimension_value
       `).catch(() => []),
 
-      // Firewall statistics from rollup
+      // Firewall statistics from rollup (pre-aggregated)
       db.execute<{ action: string; count: number }>(sql`
         SELECT dimension_value AS action, sum(count)::int AS count
         FROM stats_rollup
@@ -72,25 +69,21 @@ export default defineEventHandler(async (event) => {
         ORDER BY count DESC
       `).catch(() => []),
 
-      // Top countries (limited sample from recent data for performance)
+      // Top countries (from rollup - pre-aggregated)
       db.execute<{ country: string; count: number }>(sql`
         SELECT 
-          data->>'ClientCountry' AS country,
-          count(*)::int
-        FROM (
-          SELECT data
-          FROM logs
-          WHERE timestamp >= ${sinceISO}::timestamptz
-            ${zoneId ? sql`AND zone_id = ${zoneId}` : sql``}
-            AND data->>'ClientCountry' IS NOT NULL
-          LIMIT 50000
-        ) AS sample
-        GROUP BY data->>'ClientCountry'
+          dimension_value AS country,
+          SUM(count)::int AS count
+        FROM stats_rollup
+        WHERE metric = 'country'
+          AND hour_bucket >= ${sinceISO}::timestamptz
+          ${zoneRollupFilter}
+        GROUP BY dimension_value
         ORDER BY count DESC
         LIMIT 10
       `).catch(() => []),
 
-      // Top zones from rollup (group by zone_id, not dimension_value)
+      // Top zones from rollup (pre-aggregated)
       zoneId ? Promise.resolve([]) : db.execute<{ zone_id: string; zone_name: string; count: number }>(sql`
         SELECT 
           r.zone_id AS zone_id,
@@ -108,7 +101,7 @@ export default defineEventHandler(async (event) => {
         LIMIT 10
       `).catch(() => []),
 
-      // Top hosts from rollup
+      // Top hosts from rollup (pre-aggregated)
       db.execute<{ host: string; count: number }>(sql`
         SELECT dimension_value AS host, sum(count)::int AS count
         FROM stats_rollup
@@ -120,7 +113,7 @@ export default defineEventHandler(async (event) => {
         LIMIT 10
       `).catch(() => []),
 
-      // Top threat sources (IPs that were actually blocked)
+      // Top threat sources (still needs raw logs for IP details - but counts are fast)
       db.execute<{ ip: string; country: string; asn: string; count: number }>(sql`
         WITH blocked_counts AS (
           SELECT 
@@ -159,41 +152,31 @@ export default defineEventHandler(async (event) => {
         ORDER BY bc.block_count DESC
       `).catch(() => []),
 
-      // Cache statistics (sampled from recent data)
+      // HTTP status code distribution (from rollup - pre-aggregated)
       db.execute<{ status: string; count: number }>(sql`
         SELECT 
-          data->>'CacheCacheStatus' AS status,
-          count(*)::int
-        FROM (
-          SELECT data
-          FROM logs
-          WHERE timestamp >= ${sinceISO}::timestamptz
-            ${zoneId ? sql`AND zone_id = ${zoneId}` : sql``}
-            AND dataset = 'http_requests'
-            AND data->>'CacheCacheStatus' IS NOT NULL
-          LIMIT 50000
-        ) AS sample
-        GROUP BY data->>'CacheCacheStatus'
+          dimension_value AS status,
+          SUM(count)::int AS count
+        FROM stats_rollup
+        WHERE metric = 'http_status'
+          AND hour_bucket >= ${sinceISO}::timestamptz
+          ${zoneRollupFilter}
+        GROUP BY dimension_value
         ORDER BY count DESC
+        LIMIT 15
       `).catch(() => []),
 
-      // HTTP status code distribution (sampled)
+      // Cache statistics (from rollup - pre-aggregated)
       db.execute<{ status: string; count: number }>(sql`
         SELECT 
-          data->>'EdgeResponseStatus' AS status,
-          count(*)::int
-        FROM (
-          SELECT data
-          FROM logs
-          WHERE timestamp >= ${sinceISO}::timestamptz
-            ${zoneId ? sql`AND zone_id = ${zoneId}` : sql``}
-            AND dataset = 'http_requests'
-            AND data->>'EdgeResponseStatus' IS NOT NULL
-          LIMIT 50000
-        ) AS sample
-        GROUP BY data->>'EdgeResponseStatus'
+          dimension_value AS status,
+          SUM(count)::int AS count
+        FROM stats_rollup
+        WHERE metric = 'cache_status'
+          AND hour_bucket >= ${sinceISO}::timestamptz
+          ${zoneRollupFilter}
+        GROUP BY dimension_value
         ORDER BY count DESC
-        LIMIT 10
       `).catch(() => [])
     ])
 
@@ -223,9 +206,9 @@ export default defineEventHandler(async (event) => {
       ? Math.round((cacheHits / totalCacheableRequests) * 100) 
       : 0
 
-    // Process status codes (from sampled data)
+    // Process status codes (accurate counts, not sampled)
     const statusCodesRaw = statusCodes as any[]
-    const totalHttpSampled = statusCodesRaw.reduce((sum, r) => sum + Number(r.count), 0)
+    const totalHttpRequests = statusCodesRaw.reduce((sum, r) => sum + Number(r.count), 0)
     const successfulRequests = statusCodesRaw
       .filter(r => r.status && r.status.startsWith('2'))
       .reduce((sum, r) => sum + Number(r.count), 0)
@@ -234,6 +217,9 @@ export default defineEventHandler(async (event) => {
       .reduce((sum, r) => sum + Number(r.count), 0)
     const serverErrors = statusCodesRaw
       .filter(r => r.status && r.status.startsWith('5'))
+      .reduce((sum, r) => sum + Number(r.count), 0)
+    const otherStatuses = statusCodesRaw
+      .filter(r => r.status && !r.status.startsWith('2') && !r.status.startsWith('4') && !r.status.startsWith('5'))
       .reduce((sum, r) => sum + Number(r.count), 0)
 
     return {
@@ -261,14 +247,14 @@ export default defineEventHandler(async (event) => {
       // Performance metrics
       performance: {
         cacheHitRate,
-        successRate: totalHttpSampled > 0 
-          ? Math.round((successfulRequests / totalHttpSampled) * 100) 
+        successRate: totalHttpRequests > 0 
+          ? Math.round((successfulRequests / totalHttpRequests) * 100) 
           : 0,
-        clientErrorRate: totalHttpSampled > 0 
-          ? Math.round((clientErrors / totalHttpSampled) * 100) 
+        clientErrorRate: totalHttpRequests > 0 
+          ? Math.round((clientErrors / totalHttpRequests) * 100) 
           : 0,
-        serverErrorRate: totalHttpSampled > 0 
-          ? Math.round((serverErrors / totalHttpSampled) * 100) 
+        serverErrorRate: totalHttpRequests > 0 
+          ? Math.round((serverErrors / totalHttpRequests) * 100) 
           : 0
       },
 

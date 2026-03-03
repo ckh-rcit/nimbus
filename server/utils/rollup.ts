@@ -4,6 +4,16 @@ import { getDatabase, schema } from '~~/server/database'
 /**
  * Metric types tracked in the rollup table.
  * Each maps to a dimension extracted from log data at ingest time.
+ * 
+ * Metrics:
+ * - host: ClientRequestHost from http_requests
+ * - client_ip: Client IP from all datasets
+ * - fw_action: Firewall action from firewall_events
+ * - fw_mitigated_zone: Zones with non-allow/skip actions
+ * - http_status: EdgeResponseStatus from http_requests
+ * - cache_status: CacheCacheStatus from http_requests
+ * - country: ClientCountry from all datasets
+ * - dataset: Dataset type (http_requests, firewall_events)
  */
 type RollupEntry = {
   hourBucket: Date
@@ -44,12 +54,13 @@ export function extractRollupEntries(
     const data = log.data as Record<string, unknown>
     const zoneId = log.zoneId || ALL_ZONES_SENTINEL
 
-    // --- host (from http_requests) ---
-    if (log.dataset === 'http_requests') {
-      const host = data['ClientRequestHost'] as string | undefined
-      if (host) {
-        entries.push({ hourBucket, metric: 'host', dimensionValue: host, zoneId })
-      }
+    // --- dataset counter (all datasets) ---
+    entries.push({ hourBucket, metric: 'dataset', dimensionValue: log.dataset, zoneId })
+
+    // --- country (all datasets) ---
+    const country = data['ClientCountry'] as string | undefined
+    if (country) {
+      entries.push({ hourBucket, metric: 'country', dimensionValue: country, zoneId })
     }
 
     // --- client_ip (all datasets) ---
@@ -57,13 +68,35 @@ export function extractRollupEntries(
       entries.push({ hourBucket, metric: 'client_ip', dimensionValue: log.clientIp, zoneId })
     }
 
-    // --- fw_action (from firewall_events) ---
+    // --- HTTP-specific metrics ---
+    if (log.dataset === 'http_requests') {
+      // host
+      const host = data['ClientRequestHost'] as string | undefined
+      if (host) {
+        entries.push({ hourBucket, metric: 'host', dimensionValue: host, zoneId })
+      }
+
+      // http_status (EdgeResponseStatus)
+      const status = data['EdgeResponseStatus'] as string | number | undefined
+      if (status) {
+        const statusStr = String(status)
+        entries.push({ hourBucket, metric: 'http_status', dimensionValue: statusStr, zoneId })
+      }
+
+      // cache_status (CacheCacheStatus)
+      const cacheStatus = data['CacheCacheStatus'] as string | undefined
+      if (cacheStatus) {
+        entries.push({ hourBucket, metric: 'cache_status', dimensionValue: cacheStatus, zoneId })
+      }
+    }
+
+    // --- Firewall-specific metrics ---
     if (log.dataset === 'firewall_events') {
       const action = data['Action'] as string | undefined
       if (action) {
         entries.push({ hourBucket, metric: 'fw_action', dimensionValue: action, zoneId })
 
-        // --- fw_mitigated_zone: count non-allow/skip actions per zone ---
+        // fw_mitigated_zone: count non-allow/skip actions per zone
         const lower = action.toLowerCase()
         if (lower !== 'allow' && lower !== 'skip' && log.zoneId) {
           entries.push({ hourBucket, metric: 'fw_mitigated_zone', dimensionValue: log.zoneId, zoneId })

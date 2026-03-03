@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
+
 definePageMeta({
   layout: 'default'
 })
@@ -109,12 +112,66 @@ const formatCountry = (code: string | null | undefined): string => {
   return countryNames[code.toUpperCase()] || code
 }
 
-// Print handler
-const handlePrint = () => {
-  window.print()
-}
+// Export PDF handler
+const isExporting = ref(false)
 
-// Export as PDF would just use browser print to PDF
+const handleExportPDF = async () => {
+  if (!report.value || isExporting.value) return
+  
+  isExporting.value = true
+  
+  try {
+    const element = document.querySelector('.report-document') as HTMLElement
+    if (!element) throw new Error('Report element not found')
+    
+    // Capture the report as canvas with high quality
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff'
+    })
+    
+    const imgData = canvas.toDataURL('image/png')
+    
+    // Create PDF (Letter size: 8.5 x 11 inches)
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'in',
+      format: 'letter'
+    })
+    
+    const imgWidth = 8.5
+    const imgHeight = (canvas.height * imgWidth) / canvas.width
+    
+    let heightLeft = imgHeight
+    let position = 0
+    
+    // Add first page
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+    heightLeft -= 11
+    
+    // Add additional pages if content is taller than one page
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight
+      pdf.addPage()
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= 11
+    }
+    
+    // Generate filename with zone and date
+    const zoneName = reportZoneName.value.replace(/[^a-zA-Z0-9]/g, '_')
+    const dateStr = new Date().toISOString().split('T')[0]
+    const filename = `Nimbus_Report_${zoneName}_${dateStr}.pdf`
+    
+    pdf.save(filename)
+  } catch (error) {
+    console.error('Failed to generate PDF:', error)
+    alert('Failed to generate PDF. Please try again.')
+  } finally {
+    isExporting.value = false
+  }
+}
 </script>
 
 <template>
@@ -152,13 +209,10 @@ const handlePrint = () => {
         </button>
       </div>
       <div class="print-actions">
-        <button @click="handlePrint" class="print-btn" :disabled="pending || !report">
-          <UIcon name="i-heroicons-printer" class="w-4 h-4" />
-          <span>Print / Export PDF</span>
+        <button @click="handleExportPDF" class="print-btn" :disabled="pending || !report || isExporting">
+          <UIcon name="i-heroicons-arrow-down-tray" class="w-4 h-4" :class="{ 'animate-bounce': isExporting }" />
+          <span>{{ isExporting ? 'Generating PDF...' : 'Export PDF' }}</span>
         </button>
-        <p v-if="report" class="print-tip">
-          💡 For best results, enable "Background graphics" in print settings
-        </p>
       </div>
     </div>
 
@@ -400,8 +454,8 @@ const handlePrint = () => {
           <span>Performance insights & statistics</span>
         </div>
         <div class="empty-feature">
-          <UIcon name="i-heroicons-printer" class="w-5 h-5 text-purple-500" />
-          <span>Print-ready professional format</span>
+          <UIcon name="i-heroicons-arrow-down-tray" class="w-5 h-5 text-purple-500" />
+          <span>One-click PDF export</span>
         </div>
       </div>
     </div>
@@ -933,201 +987,6 @@ const handlePrint = () => {
   gap: 12px;
   font-size: 14px;
   color: #d4d4d4;
-}
-
-/* Print Styles */
-@media print {
-  /* Hide non-printable elements */
-  .no-print {
-    display: none !important;
-  }
-
-  /* Reset page and container */
-  @page {
-    margin: 0.75in;
-    size: letter;
-  }
-
-  body {
-    background: white;
-  }
-
-  .report-container {
-    background: white;
-    min-height: auto;
-  }
-
-  .report-document {
-    box-shadow: none;
-    padding: 0;
-    max-width: none;
-    background: white;
-    border-radius: 0;
-    margin: 0;
-  }
-
-  /* Header stays together */
-  .report-header {
-    page-break-after: avoid;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-  }
-
-  /* Prevent awkward breaks */
-  .report-section {
-    page-break-inside: avoid;
-    margin-bottom: 32px;
-  }
-
-  .section-title {
-    page-break-after: avoid;
-    margin-bottom: 12px;
-  }
-
-  .chart-card {
-    page-break-inside: avoid;
-    margin-bottom: 16px;
-  }
-
-  .metric-card {
-    page-break-inside: avoid;
-  }
-
-  .summary-grid {
-    page-break-inside: avoid;
-    margin-bottom: 20px;
-  }
-
-  .two-column {
-    page-break-inside: avoid;
-    margin-bottom: 20px;
-  }
-
-  /* Ensure all colors and backgrounds print */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
-  }
-
-  .metric-card.primary,
-  .metric-card.success,
-  .metric-card.warning,
-  .metric-card.info {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  .report-logo-icon {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Ensure borders print */
-  .metric-card,
-  .chart-card,
-  .data-table,
-  .data-table th,
-  .data-table td {
-    border-color: #e5e5e5 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Make sure backgrounds print in metric cards */
-  .metric-card.primary {
-    background: #eff6ff !important;
-    border: 1px solid #3b82f6 !important;
-  }
-
-  .metric-card.success {
-    background: #f0fdf4 !important;
-    border: 1px solid #22c55e !important;
-  }
-
-  .metric-card.warning {
-    background: #fef3c7 !important;
-    border: 1px solid #f59e0b !important;
-  }
-
-  .metric-card.info {
-    background: #fef9ee !important;
-    border: 1px solid #f6821f !important;
-  }
-
-  /* Ensure chart cards have backgrounds */
-  .chart-card {
-    background: #f8f8f8 !important;
-    border: 1px solid #e5e5e5 !important;
-  }
-
-  /* Footer watermark */
-  .watermark {
-    opacity: 0.2 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Optimize table printing */
-  .data-table {
-    border-collapse: collapse;
-  }
-
-  .data-table thead {
-    border-bottom: 2px solid #e5e5e5;
-  }
-
-  .data-table td {
-    border-bottom: 1px solid #f0f0f0;
-  }
-
-  /* Font adjustments for print */
-  body,
-  .report-document {
-    font-size: 11pt;
-    line-height: 1.4;
-  }
-
-  .report-title {
-    font-size: 28pt;
-  }
-
-  .report-subtitle {
-    font-size: 18pt;
-  }
-
-  .section-title {
-    font-size: 16pt;
-  }
-
-  .chart-title {
-    font-size: 13pt;
-  }
-
-  .metric-value {
-    font-size: 26pt;
-  }
-
-  .metric-label {
-    font-size: 10pt;
-  }
-
-  /* Ensure proper spacing */
-  .report-header {
-    margin-bottom: 1.5em;
-  }
-
-  .report-section {
-    margin-bottom: 2em;
-  }
-
-  .summary-grid {
-    gap: 12px;
-  }
-
-  .two-column {
-    gap: 16px;
-  }
 }
 
 /* Responsive */

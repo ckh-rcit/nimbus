@@ -50,6 +50,38 @@ async function main() {
       sql: `CREATE INDEX CONCURRENTLY IF NOT EXISTS logs_zone_ts_client_ip_idx
             ON logs (zone_id, timestamp, client_ip)
             WHERE client_ip IS NOT NULL`
+    },
+    {
+      name: 'logs_http_cache_expr_idx',
+      description: 'Expression index on CacheCacheStatus for http_requests',
+      sql: `CREATE INDEX CONCURRENTLY IF NOT EXISTS logs_http_cache_expr_idx
+            ON logs ((data->>'CacheCacheStatus'))
+            WHERE dataset = 'http_requests' AND data->>'CacheCacheStatus' IS NOT NULL`
+    },
+    {
+      name: 'logs_country_expr_idx',
+      description: 'Expression index on ClientCountry for all datasets',
+      sql: `CREATE INDEX CONCURRENTLY IF NOT EXISTS logs_country_expr_idx
+            ON logs ((data->>'ClientCountry'))
+            WHERE data->>'ClientCountry' IS NOT NULL`
+    },
+    {
+      name: 'stats_rollup_uq',
+      description: 'Unique index on stats_rollup for efficient upserts',
+      sql: `CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS stats_rollup_uq
+            ON stats_rollup (hour_bucket, metric, dimension_value, zone_id)`
+    },
+    {
+      name: 'stats_rollup_metric_hour_idx',
+      description: 'Index on (metric, hour_bucket) for fast rollup queries',
+      sql: `CREATE INDEX CONCURRENTLY IF NOT EXISTS stats_rollup_metric_hour_idx
+            ON stats_rollup (metric, hour_bucket)`
+    },
+    {
+      name: 'stats_rollup_zone_metric_hour_idx',
+      description: 'Index on (zone_id, metric, hour_bucket) for zone-filtered queries',
+      sql: `CREATE INDEX CONCURRENTLY IF NOT EXISTS stats_rollup_zone_metric_hour_idx
+            ON stats_rollup (zone_id, metric, hour_bucket)`
     }
   ]
 
