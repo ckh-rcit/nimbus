@@ -870,6 +870,8 @@ function exportCsv() {
 
 .expanded-content {
   padding: 16px;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 /* Detail toggle button */
@@ -904,6 +906,8 @@ function exportCsv() {
   border: 1px solid #262626;
   border-radius: 6px;
   padding: 12px;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .detail-group-title {
@@ -930,11 +934,13 @@ function exportCsv() {
   padding: 3px 0;
   font-size: 12px;
   line-height: 1.4;
+  min-width: 0;
 }
 
 .detail-field-key {
   color: #737373;
-  min-width: 140px;
+  min-width: 120px;
+  max-width: 160px;
   flex-shrink: 0;
   word-break: break-all;
 }
@@ -942,6 +948,9 @@ function exportCsv() {
 .detail-field-value {
   color: #d4d4d4;
   word-break: break-all;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .log-json {
