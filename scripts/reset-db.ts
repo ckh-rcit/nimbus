@@ -38,10 +38,14 @@ async function main() {
     await sql.unsafe(`DROP INDEX IF EXISTS ${idx.name}`)
   }
 
-  // Truncate logs
+  // Truncate logs + stats_rollup
   console.log('[RESET] Truncating logs table...')
   await sql.unsafe('TRUNCATE TABLE logs RESTART IDENTITY')
   console.log('[RESET] Logs table cleared.')
+
+  console.log('[RESET] Truncating stats_rollup table...')
+  await sql.unsafe('TRUNCATE TABLE stats_rollup RESTART IDENTITY')
+  console.log('[RESET] stats_rollup table cleared.')
 
   // Create expression indexes (fast on empty table)
   const indexes = [
