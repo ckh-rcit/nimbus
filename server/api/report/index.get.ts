@@ -122,15 +122,10 @@ export default defineEventHandler(async (event) => {
 
       // Top threat sources (IPs that were actually blocked)
       db.execute<{ ip: string; country: string; asn: string; count: number }>(sql`
-        SELECT 
-          client_ip AS ip,
-          COALESCE(data->>'ClientCountry', 'Unknown') AS country,
-          COALESCE('AS' || (data->>'ClientASN'), 'Unknown') AS asn,
-          count(*)::int AS count
-        FROM (
-          SELECT DISTINCT ON (client_ip) 
+        WITH blocked_counts AS (
+          SELECT 
             client_ip,
-            data
+            count(*)::int AS block_count
           FROM logs
           WHERE timestamp >= ${sinceISO}::timestamptz
             ${zoneId ? sql`AND zone_id = ${zoneId}` : sql``}
@@ -140,12 +135,28 @@ export default defineEventHandler(async (event) => {
               (data->>'Action')::text IN ('block', 'managed_challenge')
               OR (data->>'Action')::text LIKE '%block%'
             )
+          GROUP BY client_ip
+          ORDER BY block_count DESC
+          LIMIT 10
+        ),
+        ip_details AS (
+          SELECT DISTINCT ON (client_ip)
+            client_ip,
+            data->>'ClientCountry' AS country,
+            data->>'ClientASN' AS asn
+          FROM logs
+          WHERE client_ip IN (SELECT client_ip FROM blocked_counts)
+            AND dataset = 'firewall_events'
           ORDER BY client_ip, timestamp DESC
-          LIMIT 10000
-        ) AS blocked_ips
-        GROUP BY client_ip, data->>'ClientCountry', data->>'ClientASN'
-        ORDER BY count DESC
-        LIMIT 10
+        )
+        SELECT 
+          bc.client_ip AS ip,
+          COALESCE(d.country, 'Unknown') AS country,
+          COALESCE('AS' || d.asn, 'Unknown') AS asn,
+          bc.block_count AS count
+        FROM blocked_counts bc
+        LEFT JOIN ip_details d ON d.client_ip = bc.client_ip
+        ORDER BY bc.block_count DESC
       `).catch(() => []),
 
       // Cache statistics (sampled from recent data)
@@ -212,8 +223,9 @@ export default defineEventHandler(async (event) => {
       ? Math.round((cacheHits / totalCacheableRequests) * 100) 
       : 0
 
-    // Process status codes
+    // Process status codes (from sampled data)
     const statusCodesRaw = statusCodes as any[]
+    const totalHttpSampled = statusCodesRaw.reduce((sum, r) => sum + Number(r.count), 0)
     const successfulRequests = statusCodesRaw
       .filter(r => r.status && r.status.startsWith('2'))
       .reduce((sum, r) => sum + Number(r.count), 0)
@@ -249,14 +261,14 @@ export default defineEventHandler(async (event) => {
       // Performance metrics
       performance: {
         cacheHitRate,
-        successRate: totalRequests > 0 
-          ? Math.round((successfulRequests / totalRequests) * 100) 
+        successRate: totalHttpSampled > 0 
+          ? Math.round((successfulRequests / totalHttpSampled) * 100) 
           : 0,
-        clientErrorRate: totalRequests > 0 
-          ? Math.round((clientErrors / totalRequests) * 100) 
+        clientErrorRate: totalHttpSampled > 0 
+          ? Math.round((clientErrors / totalHttpSampled) * 100) 
           : 0,
-        serverErrorRate: totalRequests > 0 
-          ? Math.round((serverErrors / totalRequests) * 100) 
+        serverErrorRate: totalHttpSampled > 0 
+          ? Math.round((serverErrors / totalHttpSampled) * 100) 
           : 0
       },
 

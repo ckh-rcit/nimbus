@@ -151,10 +151,15 @@ const handlePrint = () => {
           <span>Generate</span>
         </button>
       </div>
-      <button @click="handlePrint" class="print-btn" :disabled="pending || !report">
-        <UIcon name="i-heroicons-printer" class="w-4 h-4" />
-        <span>Print / Export PDF</span>
-      </button>
+      <div class="print-actions">
+        <button @click="handlePrint" class="print-btn" :disabled="pending || !report">
+          <UIcon name="i-heroicons-printer" class="w-4 h-4" />
+          <span>Print / Export PDF</span>
+        </button>
+        <p v-if="report" class="print-tip">
+          💡 For best results, enable "Background graphics" in print settings
+        </p>
+      </div>
     </div>
 
     <!-- Print-friendly report -->
@@ -531,6 +536,20 @@ const handlePrint = () => {
   opacity: 0.5;
   cursor: not-allowed;
   background-color: #666;
+}
+
+.print-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.print-tip {
+  font-size: 12px;
+  color: #a3a3a3;
+  margin: 0;
+  font-style: italic;
 }
 
 /* Report Document */
@@ -918,48 +937,196 @@ const handlePrint = () => {
 
 /* Print Styles */
 @media print {
+  /* Hide non-printable elements */
   .no-print {
     display: none !important;
   }
 
+  /* Reset page and container */
+  @page {
+    margin: 0.75in;
+    size: letter;
+  }
+
+  body {
+    background: white;
+  }
+
   .report-container {
     background: white;
+    min-height: auto;
   }
 
   .report-document {
     box-shadow: none;
     padding: 0;
     max-width: none;
+    background: white;
+    border-radius: 0;
+    margin: 0;
   }
 
+  /* Header stays together */
+  .report-header {
+    page-break-after: avoid;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+  }
+
+  /* Prevent awkward breaks */
   .report-section {
     page-break-inside: avoid;
+    margin-bottom: 32px;
+  }
+
+  .section-title {
+    page-break-after: avoid;
+    margin-bottom: 12px;
   }
 
   .chart-card {
     page-break-inside: avoid;
+    margin-bottom: 16px;
   }
 
   .metric-card {
     page-break-inside: avoid;
   }
 
-  /* Ensure colors print */
+  .summary-grid {
+    page-break-inside: avoid;
+    margin-bottom: 20px;
+  }
+
+  .two-column {
+    page-break-inside: avoid;
+    margin-bottom: 20px;
+  }
+
+  /* Ensure all colors and backgrounds print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
   .metric-card.primary,
   .metric-card.success,
   .metric-card.warning,
   .metric-card.info {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .report-logo-icon {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
+  /* Ensure borders print */
+  .metric-card,
+  .chart-card,
+  .data-table,
+  .data-table th,
+  .data-table td {
+    border-color: #e5e5e5 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Make sure backgrounds print in metric cards */
+  .metric-card.primary {
+    background: #eff6ff !important;
+    border: 1px solid #3b82f6 !important;
+  }
+
+  .metric-card.success {
+    background: #f0fdf4 !important;
+    border: 1px solid #22c55e !important;
+  }
+
+  .metric-card.warning {
+    background: #fef3c7 !important;
+    border: 1px solid #f59e0b !important;
+  }
+
+  .metric-card.info {
+    background: #fef9ee !important;
+    border: 1px solid #f6821f !important;
+  }
+
+  /* Ensure chart cards have backgrounds */
+  .chart-card {
+    background: #f8f8f8 !important;
+    border: 1px solid #e5e5e5 !important;
+  }
+
+  /* Footer watermark */
   .watermark {
-    opacity: 0.15;
+    opacity: 0.2 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Optimize table printing */
+  .data-table {
+    border-collapse: collapse;
+  }
+
+  .data-table thead {
+    border-bottom: 2px solid #e5e5e5;
+  }
+
+  .data-table td {
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  /* Font adjustments for print */
+  body,
+  .report-document {
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+
+  .report-title {
+    font-size: 28pt;
+  }
+
+  .report-subtitle {
+    font-size: 18pt;
+  }
+
+  .section-title {
+    font-size: 16pt;
+  }
+
+  .chart-title {
+    font-size: 13pt;
+  }
+
+  .metric-value {
+    font-size: 26pt;
+  }
+
+  .metric-label {
+    font-size: 10pt;
+  }
+
+  /* Ensure proper spacing */
+  .report-header {
+    margin-bottom: 1.5em;
+  }
+
+  .report-section {
+    margin-bottom: 2em;
+  }
+
+  .summary-grid {
+    gap: 12px;
+  }
+
+  .two-column {
+    gap: 16px;
   }
 }
 
@@ -1022,6 +1189,15 @@ const handlePrint = () => {
   .print-btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .print-actions {
+    width: 100%;
+    align-items: center;
+  }
+
+  .print-tip {
+    text-align: center;
   }
 
   .empty-features {
