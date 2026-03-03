@@ -25,7 +25,7 @@ const timeRanges = [
   { label: 'Last 30 days', value: '30d' },
   { label: 'All Time', value: 'all' }
 ]
-const selectedTimeRange = useState('timeRange', () => '7d')
+const selectedTimeRange = useState('timeRange', () => '24h')
 
 // Auto-refresh state
 const autoRefresh = useState('autoRefresh', () => false)

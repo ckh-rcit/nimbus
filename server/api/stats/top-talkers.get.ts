@@ -23,19 +23,7 @@ export default defineEventHandler(async (event) => {
     const zoneFilter = zoneId ? sql`AND zone_id = ${zoneId}` : sql``
 
     // Run all four queries in parallel
-    const [topIps, topHosts, topStatuses, topActions] = await Promise.all([
-      // Top 5 Client IPs — uses logs_ts_client_ip_idx / logs_zone_ts_client_ip_idx
-      db.execute<{ value: string; count: number }>(sql`
-        SELECT client_ip AS value, count(*)::int AS count
-        FROM logs
-        WHERE timestamp >= ${sinceISO}::timestamptz
-          ${zoneFilter}
-          AND client_ip IS NOT NULL
-        GROUP BY client_ip
-        ORDER BY count DESC
-        LIMIT 5
-      `).catch(() => []),
-
+    const [topHosts, topActions, topIps, mostTargeted] = await Promise.all([
       // Top 5 Hosts — uses logs_http_host_expr_idx
       db.execute<{ value: string; count: number }>(sql`
         SELECT data->>'ClientRequestHost' AS value, count(*)::int AS count
@@ -49,20 +37,7 @@ export default defineEventHandler(async (event) => {
         LIMIT 5
       `).catch(() => []),
 
-      // Top 5 HTTP Status Codes — uses logs_http_status_expr_idx
-      db.execute<{ value: string; count: number }>(sql`
-        SELECT data->>'EdgeResponseStatus' AS value, count(*)::int AS count
-        FROM logs
-        WHERE dataset = 'http_requests'
-          AND timestamp >= ${sinceISO}::timestamptz
-          ${zoneFilter}
-          AND data->>'EdgeResponseStatus' IS NOT NULL
-        GROUP BY data->>'EdgeResponseStatus'
-        ORDER BY count DESC
-        LIMIT 5
-      `).catch(() => []),
-
-      // Top 5 Firewall Actions — uses logs_fw_action_expr_idx
+      // All Firewall Actions (for percentage breakdown) — uses logs_fw_action_expr_idx
       db.execute<{ value: string; count: number }>(sql`
         SELECT data->>'Action' AS value, count(*)::int AS count
         FROM logs
@@ -72,17 +47,60 @@ export default defineEventHandler(async (event) => {
           AND data->>'Action' IS NOT NULL
         GROUP BY data->>'Action'
         ORDER BY count DESC
+      `).catch(() => []),
+
+      // Top 5 Incoming IPs — uses logs_ts_client_ip_idx / logs_zone_ts_client_ip_idx
+      db.execute<{ value: string; count: number }>(sql`
+        SELECT client_ip AS value, count(*)::int AS count
+        FROM logs
+        WHERE timestamp >= ${sinceISO}::timestamptz
+          ${zoneFilter}
+          AND client_ip IS NOT NULL
+        GROUP BY client_ip
+        ORDER BY count DESC
         LIMIT 5
-      `).catch(() => [])
+      `).catch(() => []),
+
+      // Most Targeted Zones — zones with the most mitigated (non-allow) firewall events
+      // Only relevant when viewing all zones (no zone filter)
+      zoneId
+        ? Promise.resolve([])
+        : db.execute<{ zone_id: string; zone_name: string; count: number }>(sql`
+            SELECT l.zone_id, COALESCE(z.name, l.zone_id) AS zone_name, count(*)::int AS count
+            FROM logs l
+            LEFT JOIN zones z ON z.id = l.zone_id
+            WHERE l.dataset = 'firewall_events'
+              AND l.timestamp >= ${sinceISO}::timestamptz
+              AND l.zone_id IS NOT NULL
+              AND l.data->>'Action' IS NOT NULL
+              AND l.data->>'Action' NOT IN ('allow', 'skip')
+            GROUP BY l.zone_id, z.name
+            ORDER BY count DESC
+            LIMIT 5
+          `).catch(() => [])
     ])
+
+    // Calculate firewall action percentages
+    const actionsRaw = topActions as any[]
+    const actionsTotal = actionsRaw.reduce((sum, r) => sum + Number(r.count), 0)
+    const firewallActions = actionsRaw.map(r => ({
+      value: r.value || 'Unknown',
+      count: Number(r.count),
+      percent: actionsTotal > 0 ? Math.round((Number(r.count) / actionsTotal) * 1000) / 10 : 0
+    }))
 
     return {
       period: `${hours}h`,
       cached: true,
-      topIps: (topIps as any[]).map(r => ({ value: r.value || 'Unknown', count: Number(r.count) })),
       topHosts: (topHosts as any[]).map(r => ({ value: r.value || 'Unknown', count: Number(r.count) })),
-      topStatuses: (topStatuses as any[]).map(r => ({ value: r.value || 'Unknown', count: Number(r.count) })),
-      topActions: (topActions as any[]).map(r => ({ value: r.value || 'Unknown', count: Number(r.count) }))
+      firewallActions,
+      firewallTotal: actionsTotal,
+      topIps: (topIps as any[]).map(r => ({ value: r.value || 'Unknown', count: Number(r.count) })),
+      mostTargeted: (mostTargeted as any[]).map(r => ({
+        zoneId: r.zone_id,
+        zoneName: r.zone_name || 'Unknown',
+        count: Number(r.count)
+      }))
     }
   })
 })

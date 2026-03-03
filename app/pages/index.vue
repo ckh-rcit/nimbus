@@ -103,6 +103,11 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
   const max = Math.max(...items.map(i => i.count), 1)
   return `${Math.max((count / max) * 100, 2)}%`
 }
+
+// Percentage width for firewall actions
+function percentWidth(percent: number): string {
+  return `${Math.max(percent, 2)}%`
+}
 </script>
 
 <template>
@@ -232,28 +237,7 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
         </div>
       </div>
       <!-- Loaded state -->
-      <div class="talkers-grid" v-else-if="topTalkers && (topTalkers.topIps?.length || topTalkers.topHosts?.length)">
-        <!-- Top Client IPs -->
-        <div class="talker-card" v-if="topTalkers.topIps?.length">
-          <h3 class="talker-title has-tooltip">
-            <UIcon name="i-heroicons-user" class="w-4 h-4" />
-            Top Client IPs
-            <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5 tooltip-icon" />
-            <span class="custom-tooltip">The devices or users sending the most requests to your sites. A single IP generating unusually high traffic may indicate a bot, scraper, or potential attack.</span>
-          </h3>
-          <div class="talker-list">
-            <div v-for="item in topTalkers.topIps" :key="item.value" class="talker-item">
-              <div class="talker-info">
-                <span class="talker-value font-mono">{{ item.value }}</span>
-                <span class="talker-count">{{ formatNumber(item.count) }}</span>
-              </div>
-              <div class="talker-bar-track">
-                <div class="talker-bar" :style="{ width: barWidth(item.count, topTalkers.topIps!) }"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <div class="talkers-grid" v-else-if="topTalkers && (topTalkers.topHosts?.length || topTalkers.topIps?.length || topTalkers.firewallActions?.length || topTalkers.mostTargeted?.length)">
         <!-- Top Hosts -->
         <div class="talker-card" v-if="topTalkers.topHosts?.length">
           <h3 class="talker-title has-tooltip">
@@ -275,48 +259,67 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
           </div>
         </div>
 
-        <!-- Top Status Codes -->
-        <div class="talker-card" v-if="topTalkers.topStatuses?.length">
+        <!-- Firewall Actions % -->
+        <div class="talker-card" v-if="topTalkers.firewallActions?.length">
           <h3 class="talker-title has-tooltip">
-            <UIcon name="i-heroicons-signal" class="w-4 h-4" />
-            Top Status Codes
+            <UIcon name="i-heroicons-shield-check" class="w-4 h-4" />
+            Firewall Actions
+            <span class="fw-total" v-if="topTalkers.firewallTotal">({{ formatNumber(topTalkers.firewallTotal) }} total)</span>
             <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5 tooltip-icon" />
-            <span class="custom-tooltip">HTTP response codes returned to visitors. 2xx means success, 3xx is a redirect, 4xx means the visitor requested something invalid, and 5xx indicates a server-side problem.</span>
+            <span class="custom-tooltip">Breakdown of how Cloudflare's firewall responded to requests. Shows the percentage share of each action type — Block, Challenge, Allow, etc.</span>
           </h3>
           <div class="talker-list">
-            <div v-for="item in topTalkers.topStatuses" :key="item.value" class="talker-item">
+            <div v-for="item in topTalkers.firewallActions" :key="item.value" class="talker-item">
               <div class="talker-info">
                 <span class="talker-value">
-                  <span class="status-dot" :class="'status-' + item.value.charAt(0) + 'xx'"></span>
-                  {{ item.value }}
+                  <span class="action-badge" :class="'action-' + item.value.toLowerCase()">{{ item.value }}</span>
                 </span>
-                <span class="talker-count">{{ formatNumber(item.count) }}</span>
+                <span class="talker-count">{{ item.percent }}%</span>
               </div>
               <div class="talker-bar-track">
-                <div class="talker-bar" :style="{ width: barWidth(item.count, topTalkers.topStatuses!) }"></div>
+                <div class="talker-bar" :class="'bar-' + item.value.toLowerCase()" :style="{ width: percentWidth(item.percent) }"></div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Top Firewall Actions -->
-        <div class="talker-card" v-if="topTalkers.topActions?.length">
+        <!-- Top Incoming IPs -->
+        <div class="talker-card" v-if="topTalkers.topIps?.length">
           <h3 class="talker-title has-tooltip">
-            <UIcon name="i-heroicons-shield-check" class="w-4 h-4" />
-            Firewall Actions
+            <UIcon name="i-heroicons-signal" class="w-4 h-4" />
+            Top Incoming IPs
             <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5 tooltip-icon" />
-            <span class="custom-tooltip">How Cloudflare's firewall responded to incoming requests. &lsquo;Allow&rsquo; means the request was permitted, &lsquo;Block&rsquo; means it was stopped, and &lsquo;Challenge&rsquo; means the visitor was asked to prove they are human.</span>
+            <span class="custom-tooltip">IP addresses generating the most requests across your zones. A single IP with unusually high traffic may indicate a bot, scraper, or potential attack.</span>
           </h3>
           <div class="talker-list">
-            <div v-for="item in topTalkers.topActions" :key="item.value" class="talker-item">
+            <div v-for="item in topTalkers.topIps" :key="item.value" class="talker-item">
               <div class="talker-info">
-                <span class="talker-value">
-                  <span class="action-badge" :class="'action-' + item.value.toLowerCase()">{{ item.value }}</span>
-                </span>
+                <span class="talker-value font-mono">{{ item.value }}</span>
                 <span class="talker-count">{{ formatNumber(item.count) }}</span>
               </div>
               <div class="talker-bar-track">
-                <div class="talker-bar" :class="'bar-' + item.value.toLowerCase()" :style="{ width: barWidth(item.count, topTalkers.topActions!) }"></div>
+                <div class="talker-bar" :style="{ width: barWidth(item.count, topTalkers.topIps!) }"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Most Targeted Zones -->
+        <div class="talker-card" v-if="topTalkers.mostTargeted?.length">
+          <h3 class="talker-title has-tooltip">
+            <UIcon name="i-heroicons-shield-exclamation" class="w-4 h-4" />
+            Most Targeted
+            <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5 tooltip-icon" />
+            <span class="custom-tooltip">Zones with the most mitigated firewall events (blocks, challenges, etc). These are the sites receiving the most malicious or suspicious traffic.</span>
+          </h3>
+          <div class="talker-list">
+            <div v-for="item in topTalkers.mostTargeted" :key="item.zoneId" class="talker-item">
+              <div class="talker-info">
+                <span class="talker-value">{{ item.zoneName }}</span>
+                <span class="talker-count">{{ formatNumber(item.count) }} mitigated</span>
+              </div>
+              <div class="talker-bar-track">
+                <div class="talker-bar bar-targeted" :style="{ width: barWidth(item.count, topTalkers.mostTargeted!) }"></div>
               </div>
             </div>
           </div>
@@ -661,18 +664,13 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
   transition: width 0.3s ease;
 }
 
-/* Status dots */
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
+/* Firewall total count label */
+.fw-total {
+  font-size: 11px;
+  font-weight: 400;
+  color: #525252;
+  margin-left: 2px;
 }
-
-.status-2xx { background-color: #22c55e; }
-.status-3xx { background-color: #3b82f6; }
-.status-4xx { background-color: #eab308; }
-.status-5xx { background-color: #ef4444; }
 
 /* Action badges */
 .action-badge {
@@ -697,6 +695,9 @@ function barWidth(count: number, items: Array<{ count: number }>): string {
 .bar-log { background-color: #3b82f6; }
 .bar-skip { background-color: #a3a3a3; }
 .bar-managedchallengebypassed { background-color: #a855f7; }
+
+/* Most targeted zones bar */
+.bar-targeted { background-color: #ef4444; }
 
 /* Skeleton loading animations */
 @keyframes shimmer {
