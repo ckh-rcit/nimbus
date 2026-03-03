@@ -123,7 +123,7 @@ onUnmounted(() => {
 })
 
 // Dataset-specific columns configuration
-const datasetColumnsConfig: Record<string, Array<{ key: string; label: string }>> = {
+const datasetColumnsConfig: Record<string, Array<{ key: string; label: string; tooltip?: string }>> = {
   // Zone-scoped datasets
   http_requests: [
     { key: 'data.ClientRequestMethod', label: 'Method' },
@@ -135,8 +135,7 @@ const datasetColumnsConfig: Record<string, Array<{ key: string; label: string }>
   firewall_events: [
     { key: 'data.Action', label: 'Action' },
     { key: 'data.Source', label: 'Source' },
-    { key: 'data.RuleID', label: 'Rule ID' },
-    { key: 'data.Description', label: 'Rule Name' },
+    { key: 'data.Description', label: 'Rule', tooltip: 'data.RuleID' },
     { key: 'data.ClientRequestHost', label: 'Host' },
     { key: 'data.ClientRequestPath', label: 'Path' },
     { key: 'data.EdgeColoCode', label: 'Colo' }
@@ -572,6 +571,7 @@ function exportCsv() {
                   <span 
                     v-if="col.key.startsWith('data.')"
                     class="hover:text-orange-400 cursor-pointer transition-colors"
+                    :title="col.tooltip ? formatCellValue(getNestedValue(log, col.tooltip)) : undefined"
                     @click.stop="addFilter(col.key, getNestedValue(log, col.key))"
                   >
                     {{ formatCellValue(getNestedValue(log, col.key)) }}
