@@ -55,7 +55,8 @@ export default defineNuxtConfig({
     head: {
       title: 'NIMBUS - Cloudflare Log Dashboard',
       meta: [
-        { name: 'description', content: 'Custom dashboard for Cloudflare Logpush data' }
+        { name: 'description', content: 'Custom dashboard for Cloudflare Logpush data' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' }
       ]
     }
   }

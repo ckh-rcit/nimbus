@@ -379,6 +379,38 @@ function percentWidth(percent: number): string {
   .stats-grid {
     grid-template-columns: 1fr;
   }
+  
+  .dashboard-title {
+    font-size: 20px;
+  }
+  
+  .dashboard-subtitle {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    gap: 12px;
+  }
+  
+  .stat-card {
+    padding: 14px;
+    gap: 12px;
+  }
+  
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .stat-label {
+    font-size: 12px;
+  }
+  
+  .stat-value {
+    font-size: 22px;
+  }
 }
 
 .stat-card {
@@ -458,6 +490,25 @@ function percentWidth(percent: number): string {
 @media (max-width: 640px) {
   .dataset-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .dataset-card {
+    padding: 12px;
+  }
+  
+  .dataset-icon {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .dataset-name {
+    font-size: 13px;
+  }
+  
+  .dataset-count {
+    font-size: 12px;
   }
 }
 
@@ -554,6 +605,21 @@ function percentWidth(percent: number): string {
 @media (max-width: 1200px) {
   .talkers-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .talker-card {
+    padding: 12px;
+  }
+  
+  .talker-title {
+    font-size: 12px;
+  }
+  
+  .custom-tooltip {
+    width: 220px;
+    font-size: 11px;
   }
 }
 

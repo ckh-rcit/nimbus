@@ -30,6 +30,15 @@ const selectedTimeRange = useState('timeRange', () => '24h')
 // Auto-refresh state
 const autoRefresh = useState('autoRefresh', () => false)
 
+// Mobile sidebar state
+const sidebarOpen = ref(false)
+const toggleSidebar = () => {
+  sidebarOpen.value = !sidebarOpen.value
+}
+const closeSidebar = () => {
+  sidebarOpen.value = false
+}
+
 // Sync zones handler
 const syncing = ref(false)
 async function handleSyncZones() {
@@ -49,8 +58,15 @@ const isActive = (path: string) => route.path === path
 
 <template>
   <div class="nimbus-layout">
+    <!-- Mobile Overlay -->
+    <div 
+      v-if="sidebarOpen" 
+      class="mobile-overlay"
+      @click="closeSidebar"
+    />
+    
     <!-- Sidebar -->
-    <aside class="nimbus-sidebar">
+    <aside class="nimbus-sidebar" :class="{ 'sidebar-open': sidebarOpen }">
       <!-- Logo -->
       <div class="nimbus-logo">
         <NuxtLink to="/" class="nimbus-logo-link">
@@ -68,6 +84,7 @@ const isActive = (path: string) => route.path === path
           to="/"
           class="nimbus-nav-link"
           :class="{ active: isActive('/') }"
+          @click="closeSidebar"
         >
           <UIcon name="i-heroicons-squares-2x2" class="w-4 h-4" />
           <span>Dashboard</span>
@@ -91,6 +108,7 @@ const isActive = (path: string) => route.path === path
             class="nimbus-nav-link"
             :class="{ active: isActive(`/logs/${ds.id}`) }"
             :title="ds.description"
+            @click="closeSidebar"
           >
             <UIcon :name="ds.icon" class="w-4 h-4" />
             <span>{{ ds.label }}</span>
@@ -103,6 +121,11 @@ const isActive = (path: string) => route.path === path
     <div class="nimbus-main">
       <!-- Header -->
       <header class="nimbus-header">
+        <!-- Mobile Menu Button -->
+        <button class="mobile-menu-btn" @click="toggleSidebar">
+          <UIcon name="i-heroicons-bars-3" class="w-5 h-5" />
+        </button>
+        
         <!-- Zone Selector -->
         <div class="nimbus-controls-left">
           <div class="nimbus-select-wrapper">
@@ -426,5 +449,158 @@ const isActive = (path: string) => route.path === path
   color: #525252;
   border-top: 1px solid #262626;
   background-color: #0a0a0a;
+}
+
+/* Mobile Menu Button - Hidden on desktop */
+.mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: #fafafa;
+  background-color: transparent;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.mobile-menu-btn:hover {
+  background-color: #171717;
+  border-color: #f6821f;
+}
+
+/* Mobile Overlay */
+.mobile-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  z-index: 998;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .nimbus-layout {
+    position: relative;
+  }
+
+  /* Mobile Menu Button - Show on mobile */
+  .mobile-menu-btn {
+    display: flex;
+  }
+
+  /* Mobile Overlay - Show when sidebar is open */
+  .mobile-overlay {
+    display: block;
+  }
+
+  /* Sidebar - Off-canvas on mobile */
+  .nimbus-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 999;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .nimbus-sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  /* Header adjustments for mobile */
+  .nimbus-header {
+    padding: 0 12px;
+    height: auto;
+    min-height: 56px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .nimbus-controls-left {
+    flex: 1;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .nimbus-controls-right {
+    width: 100%;
+    order: 3;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* Select elements - Full width on very small screens */
+  .nimbus-select-wrapper {
+    flex: 1;
+  }
+
+  .nimbus-select {
+    min-width: 0;
+    width: 100%;
+    font-size: 13px;
+    padding: 6px 28px 6px 10px;
+  }
+
+  .nimbus-select-sm {
+    min-width: 0;
+  }
+
+  /* Primary button - Adjust size */
+  .nimbus-btn-primary {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  /* Content padding */
+  .nimbus-content {
+    padding: 16px 12px;
+  }
+
+  /* Footer */
+  .nimbus-footer {
+    padding: 12px 16px;
+    font-size: 12px;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .nimbus-header {
+    padding: 0 8px;
+  }
+
+  .nimbus-controls-left,
+  .nimbus-controls-right {
+    gap: 6px;
+  }
+
+  .nimbus-select {
+    font-size: 12px;
+    padding: 5px 24px 5px 8px;
+  }
+
+  .nimbus-btn-primary span {
+    display: none;
+  }
+
+  .nimbus-btn-primary {
+    padding: 6px 10px;
+  }
+
+  .nimbus-content {
+    padding: 12px 8px;
+  }
+
+  .nimbus-checkbox-label span {
+    font-size: 13px;
+  }
 }
 </style>
