@@ -124,6 +124,17 @@ const isActive = (path: string) => route.path === path
           <span>Dashboard</span>
         </NuxtLink>
 
+        <!-- Report Link -->
+        <NuxtLink
+          to="/report"
+          class="nimbus-nav-link"
+          :class="{ active: isActive('/report') }"
+          @click="closeSidebar"
+        >
+          <UIcon name="i-heroicons-document-chart-bar" class="w-4 h-4" />
+          <span>Executive Report</span>
+        </NuxtLink>
+
         <!-- Zone Datasets Section -->
         <div class="nimbus-nav-section">
           <button class="nimbus-nav-section-header" @click="zoneLogsExpanded = !zoneLogsExpanded">
