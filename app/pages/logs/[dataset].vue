@@ -616,7 +616,8 @@ function exportCsv() {
                         <div class="detail-fields">
                           <div v-for="field in group.fields" :key="field.key" class="detail-field">
                             <span class="detail-field-key">{{ field.key }}</span>
-                            <span class="detail-field-value" :class="{ 'font-mono': typeof field.value === 'number' || field.key.includes('IP') || field.key.includes('ID') }">
+                            <pre v-if="typeof field.value === 'object' && field.value !== null" class="detail-field-value detail-field-complex font-mono">{{ JSON.stringify(field.value, null, 2) }}</pre>
+                            <span v-else class="detail-field-value" :class="{ 'font-mono': typeof field.value === 'number' || field.key.includes('IP') || field.key.includes('ID') }">
                               {{ formatFieldValue(field.value) }}
                             </span>
                           </div>
@@ -908,6 +909,9 @@ function exportCsv() {
   border-radius: 6px;
   padding: 12px;
   min-width: 0;
+  max-height: 360px;
+  display: flex;
+  flex-direction: column;
 }
 
 .detail-group-title {
@@ -925,6 +929,9 @@ function exportCsv() {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #404040 transparent;
 }
 
 .detail-field {
@@ -951,6 +958,22 @@ function exportCsv() {
   word-break: break-word;
   min-width: 0;
   flex: 1;
+}
+
+.detail-field-complex {
+  background: #111;
+  border: 1px solid #262626;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  max-height: 120px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #404040 transparent;
 }
 
 .log-json {
