@@ -299,7 +299,10 @@ function percentWidth(percent: number): string {
           <div class="talker-list">
             <div v-for="item in topTalkers.topIps" :key="item.value" class="talker-item">
               <div class="talker-info">
-                <span class="talker-value font-mono">{{ item.value }}</span>
+                <span class="talker-value font-mono" :title="[item.org, item.asn, item.country].filter(Boolean).join(' · ') || undefined">
+                  {{ item.value }}
+                  <span v-if="item.org" class="ip-org">{{ item.org }}</span>
+                </span>
                 <span class="talker-count">{{ formatNumber(item.count) }}</span>
               </div>
               <div class="talker-bar-track">
@@ -659,6 +662,16 @@ function percentWidth(percent: number): string {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+.ip-org {
+  font-family: inherit;
+  font-size: 11px;
+  color: #737373;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .talker-count {

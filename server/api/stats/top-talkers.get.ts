@@ -84,13 +84,48 @@ export default defineEventHandler(async (event) => {
       percent: actionsTotal > 0 ? Math.round((Number(r.count) / actionsTotal) * 1000) / 10 : 0
     }))
 
+    // Enrich top IPs with ASN/org info from the most recent log entry for each IP
+    const topIpsList = (topIps as any[]).map(r => ({ value: r.value || 'Unknown', count: Number(r.count) }))
+    
+    let enrichedIps = topIpsList
+    if (topIpsList.length > 0) {
+      try {
+        const ipValues = topIpsList.map(ip => ip.value)
+        const ipInfo = await db.execute<{ client_ip: string; asn: string; asn_desc: string; country: string }>(sql`
+          SELECT DISTINCT ON (client_ip)
+            client_ip,
+            data->>'ClientASN' AS asn,
+            COALESCE(data->>'ClientASNDescription', '') AS asn_desc,
+            COALESCE(data->>'ClientCountry', '') AS country
+          FROM logs
+          WHERE client_ip = ANY(${ipValues}::text[])
+            AND data->>'ClientASN' IS NOT NULL
+          ORDER BY client_ip, timestamp DESC
+        `)
+        
+        const infoMap = new Map((ipInfo as any[]).map(r => [r.client_ip, r]))
+        enrichedIps = topIpsList.map(ip => {
+          const info = infoMap.get(ip.value)
+          return {
+            ...ip,
+            asn: info?.asn ? `AS${info.asn}` : undefined,
+            org: info?.asn_desc || undefined,
+            country: info?.country || undefined
+          }
+        })
+      } catch {
+        // Fall back to plain IPs if enrichment fails
+        enrichedIps = topIpsList
+      }
+    }
+
     return {
       period: `${hours}h`,
       cached: true,
       topHosts: (topHosts as any[]).map(r => ({ value: r.value || 'Unknown', count: Number(r.count) })),
       firewallActions,
       firewallTotal: actionsTotal,
-      topIps: (topIps as any[]).map(r => ({ value: r.value || 'Unknown', count: Number(r.count) })),
+      topIps: enrichedIps,
       mostTargeted: (mostTargeted as any[]).map(r => ({
         zoneId: r.zone_id,
         zoneName: r.zone_name || 'Unknown',

@@ -376,6 +376,18 @@ function formatFieldValue(value: any): string {
   return String(value)
 }
 
+// Build IP tooltip from log data (ASN, org, country)
+function getIpTooltip(log: any): string | undefined {
+  const data = log.data as Record<string, any> | undefined
+  if (!data) return undefined
+  const parts: string[] = []
+  if (data.ClientASNDescription) parts.push(data.ClientASNDescription)
+  if (data.ClientASN) parts.push(`AS${data.ClientASN}`)
+  if (data.ClientCountry) parts.push(data.ClientCountry)
+  if (data.ClientIPClass && data.ClientIPClass !== 'noRecord') parts.push(data.ClientIPClass)
+  return parts.length > 0 ? parts.join(' · ') : undefined
+}
+
 // Show raw JSON toggle
 const showRawJson = ref<Set<number>>(new Set())
 function toggleRawJson(id: number) {
@@ -596,6 +608,7 @@ function exportCsv() {
                 <td class="font-mono text-sm">
                   <span 
                     class="hover:text-orange-400 cursor-pointer transition-colors"
+                    :title="getIpTooltip(log)"
                     @click.stop="addFilter('clientIp', log.clientIp)"
                   >
                     {{ log.clientIp || '-' }}
